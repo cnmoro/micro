@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - 'v*.*.*' # automatically react on semantic versioned tags
+permissions:
+  contents: write # required for softprops/action-gh-release to create the release and upload assets
 jobs:
   release:
     strategy:
