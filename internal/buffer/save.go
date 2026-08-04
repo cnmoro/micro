@@ -341,8 +341,16 @@ func (b *Buffer) saveToFile(filename string, withSudo bool, autoSave bool) error
 	}
 
 	err = b.Serialize()
+	if err == nil && OnSave != nil {
+		OnSave(b)
+	}
 	return err
 }
+
+// OnSave, if set, is called after a buffer is successfully saved to disk.
+// It exists so other packages (e.g. remote-file mirroring) can react to
+// saves without buffer needing to know about them.
+var OnSave func(b *Buffer)
 
 // safeWrite writes the buffer to a file in a "safe" way, preventing loss of the
 // contents of the file if it fails to write the new contents.

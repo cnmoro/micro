@@ -6,6 +6,77 @@
 [![Join the chat at https://gitter.im/zyedidia/micro](https://badges.gitter.im/zyedidia/micro.svg)](https://gitter.im/zyedidia/micro?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Snap Status](https://snapcraft.io/micro/badge.svg)](https://snapcraft.io/micro)
 
+---
+
+## This fork: micro as a lightweight VS Code
+
+This is [cnmoro](https://github.com/cnmoro)'s opinionated fork of micro. The
+goal is a single dependency-free terminal binary that covers the handful of
+VS Code features actually used day to day - a file explorer, an integrated
+terminal, Docker management, remote (SSH) editing - without leaving the
+terminal or dragging in a browser engine. Everything below is layered on
+top of stock micro; nothing about the underlying editor changed, and all
+of it is fully mouse-driven as well as keyboard-driven.
+
+### New features
+
+- **File Explorer** (`Alt-1`) - a file/folder tree in a left sidebar.
+  - Click a folder (or `Enter`/`Left`/`Right`) to expand/collapse it; click/double-click
+    a file to open it.
+  - `n`/`N` new file/folder, `R` rename, `d` delete, `r` refresh.
+  - A fixed `.. (up a folder)` row above the tree re-roots the Explorer (and, locally,
+    micro's working directory) one level up.
+  - Right-click a folder (or press `m`) for a context menu with **Open folder here**.
+  - Drag the sidebar's right edge to resize it.
+- **Docker management** (`Alt-2`, shares the sidebar with the Explorer) - containers
+  (grouped by compose project), images, networks and volumes.
+  - Right-click a row (or press `m`) for start/stop/restart/remove/logs/exec/inspect/prune,
+    depending on what's selected.
+  - `l` streams logs and `e` execs a shell into a container, both opening a new terminal
+    panel tab.
+  - Background operations show a non-blocking animated spinner in the info bar instead of
+    freezing the UI.
+- **Integrated terminal panel** (`Alt-3`) - a bottom panel, independent of your editor
+  splits, with its own tab strip.
+  - Click a tab to switch, click its `×` to close, click `+` for a new one.
+  - `Ctrl-t Ctrl-t` new tab, `Ctrl-w Ctrl-w` close tab, `Ctrl-n Ctrl-n` rename tab,
+    `Ctrl-o Ctrl-o` send focus back to the editor.
+  - Drag an empty part of the tab strip to resize the panel.
+- **SSH - Remote** (`Alt-4`) - VS Code Remote-SSH-style remote editing, built entirely on
+  your existing `ssh`/Docker CLI setup (no credentials are ever handled by micro).
+  - Opens a small wizard: pick a host from `~/.ssh/config` (or type one), then a remote
+    path. Connecting points the Explorer, Docker view, and a new terminal tab at that host.
+  - Press `Alt-4` again while connected to disconnect, or to nest another connection on
+    top (handy for jump hosts); disconnecting pops back to whatever you were connected to
+    before.
+  - Remote files download to a local mirror, open as an entirely normal buffer (undo,
+    backups, etc. all just work), and push their changes back over SSH on save.
+- **Open Folder** (`Alt-5`) - VS Code's "Open Folder": prompts for a directory
+  (Tab-completes, prefilled with the current one) and switches micro's working directory
+  and Explorer root to it.
+- **Recently-viewed file tabs** - every file you open (Explorer, `Ctrl-o`, `> open`) gets
+  a closable tab above the editor. Switching tabs never re-reads the file from disk or
+  loses your place - each tab keeps its own buffer alive, cursor position and all, even
+  while hidden behind another one.
+
+### New hotkeys at a glance
+
+| Key      | Action                                                    |
+|----------|-------------------------------------------------------------|
+| `Alt-1`  | Toggle the Explorer                                          |
+| `Alt-2`  | Toggle the Docker view                                       |
+| `Alt-3`  | Toggle the terminal panel                                    |
+| `Alt-4`  | Open the SSH connect/disconnect wizard                       |
+| `Alt-5`  | Change working directory / open a folder                     |
+
+Once inside micro, run `> help panels` and `> help ssh` for the full guide to all of the
+above, including every mouse interaction and the terminal panel's tab-management keys.
+
+Everything else - installation, configuration, plugins, the rest of the keybindings - is
+unchanged from upstream micro and documented below.
+
+---
+
 **micro** is a terminal-based text editor that aims to be easy to use and intuitive, while also taking advantage of the capabilities
 of modern terminals. It comes as a single, batteries-included, static binary with no dependencies; you can download and use it right now!
 

@@ -93,6 +93,13 @@ var bufdefaults = map[string]string{
 	"F10": "Quit",
 	"Esc": "Escape,Deselect,ClearInfo,RemoveAllMultiCursors,UnhighlightSearch",
 
+	// IDE-style panels
+	"Alt-1": "ToggleExplorer",
+	"Alt-2": "ToggleDocker",
+	"Alt-3": "ToggleTermPanel",
+	"Alt-4": "ToggleSSH",
+	"Alt-5": "OpenFolder",
+
 	// Mouse bindings
 	"MouseWheelUp":     "ScrollUp",
 	"MouseWheelDown":   "ScrollDown",

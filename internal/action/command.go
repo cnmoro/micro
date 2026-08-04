@@ -67,6 +67,11 @@ func InitCommands() {
 		"retab":       {(*BufPane).RetabCmd, nil},
 		"raw":         {(*BufPane).RawCmd, nil},
 		"textfilter":  {(*BufPane).TextFilterCmd, nil},
+		"explorer":    {(*BufPane).ExplorerCmd, nil},
+		"docker":      {(*BufPane).DockerCmd, nil},
+		"termpanel":   {(*BufPane).TermPanelCmd, nil},
+		"ssh":         {(*BufPane).SSHCmd, SSHComplete},
+		"openfolder":  {(*BufPane).OpenFolderCmd, buffer.FileComplete},
 	}
 }
 
@@ -303,19 +308,12 @@ func (h *BufPane) PwdCmd(args []string) {
 // OpenCmd opens a new buffer with a given filename
 func (h *BufPane) OpenCmd(args []string) {
 	if len(args) > 0 {
-		open := func() {
-			b, err := buffer.NewBufferFromFile(args[0], buffer.BTDefault)
-			if err != nil {
-				InfoBar.Error(err)
-				return
-			}
-			h.OpenBuffer(b)
+		b, err := buffer.NewBufferFromFile(args[0], buffer.BTDefault)
+		if err != nil {
+			InfoBar.Error(err)
+			return
 		}
-		if h.Buf.Modified() && !h.Buf.Shared() {
-			h.closePrompt("Save", open)
-		} else {
-			open()
-		}
+		FileTabs.Open(h, b)
 	} else {
 		InfoBar.Error("No filename")
 	}

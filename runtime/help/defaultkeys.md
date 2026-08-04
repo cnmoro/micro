@@ -139,3 +139,13 @@ Warning! The function keys may not work in all terminals!
 | F4    | Quit                      |
 | F7    | Find                      |
 | F10   | Quit                      |
+
+## IDE-style panels (see `> help panels`)
+
+| Key    | Action                                     |
+|------- |-------------------------------------------- |
+| Alt-1  | Toggle the Explorer (left sidebar)          |
+| Alt-2  | Toggle the Docker view (left sidebar)       |
+| Alt-3  | Toggle the terminal panel (bottom)          |
+| Alt-4  | Open the SSH connect/disconnect wizard (see `> help ssh`) |
+| Alt-5  | Change the working directory / open a folder (see `> help panels`) |

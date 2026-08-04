@@ -86,22 +86,92 @@ func tabBarVisible(numTabs int) bool {
 // One thing to note is that when the tab bar is hidden (only 1 tab open and
 // tabalways off) the panes occupy the full height, so resizing must take
 // that into account
+//
+// The Sidebar (left) and TermPanel (bottom) are fixed-size regions carved
+// out of the screen before the editor area (tab bar + Node tree) gets
+// whatever space remains, mirroring how the InfoBar's row is carved out
+// via iOffset below.
 func (t *TabList) Resize() {
 	w, h := screen.Screen.Size()
 	iOffset := config.GetInfoBarOffset()
 	InfoBar.Resize(w, h-1)
+
+	sidebarW := 0
+	if Sidebar != nil && Sidebar.visible {
+		sidebarW = Sidebar.width()
+		if sidebarW > w-10 {
+			sidebarW = w - 10
+		}
+		if sidebarW < 0 {
+			sidebarW = 0
+		}
+	}
+	if Sidebar != nil {
+		Sidebar.X, Sidebar.Y = 0, 0
+		Sidebar.Resize(sidebarW, h-1-iOffset)
+	}
+
+	termH := 0
+	if TermPanel != nil && TermPanel.visible {
+		termH = TermPanel.height
+		if termH > h-1-iOffset-3 {
+			termH = h - 1 - iOffset - 3
+		}
+		if termH < 0 {
+			termH = 0
+		}
+	}
+
+	editorW := w - sidebarW
+	if editorW < 1 {
+		editorW = 1
+	}
+
+	t.TabWindow.X = sidebarW
+	t.TabWindow.Resize(editorW, h)
+
+	ftH := 0
+	if FileTabs != nil {
+		ftH = FileTabs.neededHeight()
+	}
+
 	if tabBarVisible(len(t.List)) {
+		if FileTabs != nil {
+			FileTabs.X, FileTabs.Y = sidebarW, 1
+			FileTabs.Resize(editorW, ftH)
+		}
+		editorH := h - 1 - ftH - iOffset - termH
+		if editorH < 1 {
+			editorH = 1
+		}
 		for _, p := range t.List {
-			p.Y = 1
-			p.Node.Resize(w, h-1-iOffset)
+			p.X = sidebarW
+			p.Y = 1 + ftH
+			p.Node.Resize(editorW, editorH)
 			p.Resize()
 		}
+		if TermPanel != nil {
+			TermPanel.X, TermPanel.Y = sidebarW, 1+ftH+editorH
+			TermPanel.Resize(editorW, termH)
+		}
 	} else if len(t.List) == 1 {
-		t.List[0].Y = 0
-		t.List[0].Node.Resize(w, h-iOffset)
+		if FileTabs != nil {
+			FileTabs.X, FileTabs.Y = sidebarW, 0
+			FileTabs.Resize(editorW, ftH)
+		}
+		editorH := h - ftH - iOffset - termH
+		if editorH < 1 {
+			editorH = 1
+		}
+		t.List[0].X = sidebarW
+		t.List[0].Y = ftH
+		t.List[0].Node.Resize(editorW, editorH)
 		t.List[0].Resize()
+		if TermPanel != nil {
+			TermPanel.X, TermPanel.Y = sidebarW, ftH+editorH
+			TermPanel.Resize(editorW, termH)
+		}
 	}
-	t.TabWindow.Resize(w, h)
 }
 
 // HandleEvent checks for a resize event or a mouse event on the tab bar
@@ -115,9 +185,9 @@ func (t *TabList) HandleEvent(event tcell.Event) {
 		switch e.Buttons() {
 		case tcell.Button1:
 			if my == t.Y && tabBarVisible(len(t.List)) {
-				if mx == 0 {
+				if mx == t.X {
 					t.Scroll(-4)
-				} else if mx == t.Width-1 {
+				} else if mx == t.X+t.Width-1 {
 					t.Scroll(4)
 				} else {
 					ind := t.LocFromVisual(buffer.Loc{mx, my})
@@ -180,6 +250,7 @@ func (t *TabList) SetActive(a int) {
 // This prevents situations in which mouse releases are received at the wrong place
 // and the mouse state is still pressed.
 func (t *TabList) ResetMouse() {
+	ResetRouterMouse()
 	for _, tab := range t.List {
 		if !tab.release && tab.resizing != nil {
 			tab.resizing = nil
@@ -210,6 +281,10 @@ func (t *TabList) CloseTerms() {
 var Tabs *TabList
 
 func InitTabs(bufs []*buffer.Buffer) {
+	InitSidebar()
+	InitTermPanel()
+	InitFileTabs()
+
 	multiopen := config.GetGlobalOption("multiopen").(string)
 	if multiopen == "tab" {
 		Tabs = NewTabList(bufs)
@@ -222,6 +297,13 @@ func InitTabs(bufs []*buffer.Buffer) {
 				MainTab().CurPane().HSplitBuf(b)
 			}
 		}
+	}
+
+	// Seed the file tab strip with whatever buffer the active pane starts
+	// on, so it always has at least one closable tab.
+	if cur := MainTab().CurPane(); cur != nil {
+		FileTabs.tabs = append(FileTabs.tabs, &FileTab{buf: cur.Buf})
+		FileTabs.active = 0
 	}
 
 	screen.RestartCallback = Tabs.ResetMouse

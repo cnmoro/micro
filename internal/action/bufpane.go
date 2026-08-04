@@ -346,6 +346,17 @@ func (h *BufPane) resetMouse() {
 // OpenBuffer opens the given buffer in this pane.
 func (h *BufPane) OpenBuffer(b *buffer.Buffer) {
 	h.Buf.Close()
+	h.SwitchBuffer(b)
+}
+
+// SwitchBuffer displays b in this pane without closing whatever buffer was
+// previously displayed - unlike OpenBuffer, the old buffer (and its cursor/
+// scroll position) is left alive so switching back to it later picks up
+// exactly where it was left off. Used by the file tab strip (FileTabs).
+func (h *BufPane) SwitchBuffer(b *buffer.Buffer) {
+	if h.Buf == b {
+		return
+	}
 	h.Buf = b
 	h.BWindow.SetBuffer(b)
 	h.Cursor = b.GetActiveCursor()
@@ -851,6 +862,11 @@ var BufKeyActions = map[string]BufKeyAction{
 	"Deselect":                  (*BufPane).Deselect,
 	"ClearInfo":                 (*BufPane).ClearInfo,
 	"None":                      (*BufPane).None,
+	"ToggleExplorer":            (*BufPane).ToggleExplorer,
+	"ToggleDocker":              (*BufPane).ToggleDocker,
+	"ToggleTermPanel":           (*BufPane).ToggleTermPanel,
+	"ToggleSSH":                 (*BufPane).ToggleSSH,
+	"OpenFolder":                (*BufPane).OpenFolder,
 
 	// This was changed to InsertNewline but I don't want to break backwards compatibility
 	"InsertEnter": (*BufPane).InsertNewline,

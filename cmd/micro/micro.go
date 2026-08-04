@@ -53,6 +53,10 @@ var (
 	sighup chan os.Signal
 
 	timerChan chan func()
+
+	// openedFolder is set by LoadInput when a directory (rather than a
+	// file) was passed on the command line, e.g. `micro .`.
+	openedFolder bool
 )
 
 func InitFlags() {
@@ -222,6 +226,24 @@ func LoadInput(args []string) []*buffer.Buffer {
 		SearchRegex:      searchText,
 		SearchAfterStart: searchIndex > posIndex,
 	}
+
+	// A directory argument (e.g. `micro .` or `micro some/project`) opens
+	// that folder the way `code .` does: switch into it and show the
+	// Explorer, rather than erroring that a directory can't be opened as a
+	// file.
+	realFiles := make([]string, 0, len(files))
+	for _, f := range files {
+		if info, err := os.Stat(f); err == nil && info.IsDir() {
+			if abs, err := filepath.Abs(f); err == nil {
+				if err := os.Chdir(abs); err == nil {
+					openedFolder = true
+					continue
+				}
+			}
+		}
+		realFiles = append(realFiles, f)
+	}
+	files = realFiles
 
 	if len(files) > 0 {
 		// Option 1
@@ -439,6 +461,10 @@ func main() {
 
 	action.InitTabs(b)
 
+	if openedFolder {
+		action.Sidebar.Show(action.SidebarExplorerView)
+	}
+
 	err = config.RunPluginFn("init")
 	if err != nil {
 		screen.TermMessage(err)
@@ -512,7 +538,13 @@ func DoEvent() {
 		ep.Display()
 	}
 	action.MainTab().Display()
+	action.Sidebar.Display()
+	action.FileTabs.Display()
+	action.TermPanel.Display()
 	action.InfoBar.Display()
+	if action.PopupActive() {
+		action.DisplayPopup()
+	}
 	screen.Screen.Show()
 
 	// Check for new events
@@ -550,15 +582,7 @@ func DoEvent() {
 	}
 
 	if event != nil {
-		_, resize := event.(*tcell.EventResize)
-		if resize {
-			action.InfoBar.HandleEvent(event)
-			action.Tabs.HandleEvent(event)
-		} else if action.InfoBar.HasPrompt {
-			action.InfoBar.HandleEvent(event)
-		} else {
-			action.Tabs.HandleEvent(event)
-		}
+		action.RouteEvent(event)
 	}
 
 	err := config.RunPluginFn("onAnyEvent")

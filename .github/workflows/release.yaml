@@ -1,9 +1,9 @@
 name: Release builds
 on:
   workflow_dispatch: # Allows manual trigger
-  # push:
-  #   tags:
-  #     - 'v*.*.*' # automatically react on semantic versioned tags
+  push:
+    tags:
+      - 'v*.*.*' # automatically react on semantic versioned tags
 jobs:
   release:
     strategy:
@@ -25,7 +25,7 @@ jobs:
         fetch-tags: true
 
     - name: Build
-      run: tools/cross-compile.sh
+      run: tools/cross-compile-fork.sh
 
     - name: Publish
       uses: softprops/action-gh-release@v3

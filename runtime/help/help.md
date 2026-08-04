@@ -54,6 +54,10 @@ Here are the available help topics:
 * `copypaste`: Explains micro's copy and paste usage and configuration.
    It describes how copy and paste is working on different operating systems and
    setups.
+* `panels`: Explains the Explorer, Docker and terminal panel features and their
+   keybindings.
+* `ssh`: Explains the SSH - Remote feature: browsing, editing and running Docker
+   and a terminal against a remote machine.
 
 For example, to open the help page on plugins you would run `> help plugins`.
 

@@ -242,9 +242,10 @@ func TestMouse(t *testing.T) {
 	// buffer:
 	// base content
 	// the selections need to happen at different locations to avoid a double click
-	injectMouse(3, 0, tcell.Button1, tcell.ModNone)
+	// row 0 is the file tab strip (FileTabs) - buffer content starts at row 1
+	injectMouse(3, 1, tcell.Button1, tcell.ModNone)
 	injectKey(tcell.KeyLeft, 0, tcell.ModNone)
-	injectMouse(0, 0, tcell.ButtonNone, tcell.ModNone)
+	injectMouse(0, 1, tcell.ButtonNone, tcell.ModNone)
 	injectString("secondline")
 	// buffer:
 	// secondlinebase content
@@ -252,8 +253,8 @@ func TestMouse(t *testing.T) {
 	// buffer:
 	// secondline
 	// base content
-	injectMouse(2, 0, tcell.Button1, tcell.ModNone)
-	injectMouse(0, 0, tcell.ButtonNone, tcell.ModNone)
+	injectMouse(2, 1, tcell.Button1, tcell.ModNone)
+	injectMouse(0, 1, tcell.ButtonNone, tcell.ModNone)
 	injectKey(tcell.KeyEnter, rune(tcell.KeyEnter), tcell.ModNone)
 	// buffer:
 	//
