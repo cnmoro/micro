@@ -97,19 +97,25 @@ var bufdefaults = map[string]string{
 	"Esc": "Escape,Deselect,ClearInfo,RemoveAllMultiCursors,UnhighlightSearch",
 
 	// IDE-style panels
-	// Ctrl-Shift- fallbacks are listed alongside the Alt- bindings because
-	// Alt (Option on macOS) is unreliable across terminals unless "Use
-	// Option as Meta Key" is explicitly enabled - see `> help panels`.
+	// Three ways to trigger each of these - see the comment on
+	// handleGlobalToggle in router.go for why none of Alt-/Ctrl-Shift-/F-key
+	// is reliable alone across every terminal. `> help panels` also
+	// documents the always-works command-mode fallback.
 	"Alt-1":      "ToggleExplorer",
 	"CtrlShift1": "ToggleExplorer",
+	"F1":         "ToggleExplorer",
 	"Alt-2":      "ToggleDocker",
 	"CtrlShift2": "ToggleDocker",
+	"F5":         "ToggleDocker",
 	"Alt-3":      "ToggleTermPanel",
 	"CtrlShift3": "ToggleTermPanel",
+	"F6":         "ToggleTermPanel",
 	"Alt-4":      "ToggleSSH",
 	"CtrlShift4": "ToggleSSH",
+	"F8":         "ToggleSSH",
 	"Alt-5":      "OpenFolder",
 	"CtrlShift5": "OpenFolder",
+	"F9":         "OpenFolder",
 
 	// Mouse bindings
 	"MouseWheelUp":     "ScrollUp",

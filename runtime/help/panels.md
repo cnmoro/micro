@@ -23,23 +23,47 @@ name means it has unsaved changes.
 
 ## Toggling the panels
 
-* `Alt-1` (or `Ctrl-Shift-1`): toggle the Explorer (left sidebar)
-* `Alt-2` (or `Ctrl-Shift-2`): toggle the Docker view (left sidebar)
-* `Alt-3` (or `Ctrl-Shift-3`): toggle the terminal panel (bottom)
-* `Alt-4` (or `Ctrl-Shift-4`): open the SSH connect/disconnect wizard (see `> help ssh`)
-* `Alt-5` (or `Ctrl-Shift-5`): change the working directory / open a local folder
+The one that's actually guaranteed to work everywhere is command mode:
+press `Ctrl-e` (a plain Ctrl+letter - the one modifier combo every
+terminal supports with zero configuration), type the command, press
+`Enter`.
 
-These keybindings work no matter which part of the editor currently has
-focus. You can also use the commands `> explorer`, `> docker` and
-`> termpanel`.
+* `> explorer` - toggle the Explorer (left sidebar)
+* `> docker` - toggle the Docker view (left sidebar)
+* `> termpanel` - toggle the terminal panel (bottom)
+* `> ssh` - open the SSH connect/disconnect wizard (see `> help ssh`)
+* `> openfolder` - change the working directory / open a local folder
 
-If Alt- doesn't seem to do anything - common on macOS, where Option only
-sends a real Alt/Meta modifier if you've turned that on in your terminal's
-settings, and Cmd is never forwarded to any terminal app at all - try the
-Ctrl-Shift- version instead. If that doesn't work either (some terminals
-don't report it as a distinct combo), `Ctrl-e` (command mode) then
-`explorer`/`docker`/`termpanel` + Enter always works; see
-`> help defaultkeys` for the full explanation.
+For a single keystroke instead, each panel also has three keybindings that
+all do the same thing - use whichever one actually reaches micro in your
+terminal:
+
+| Panel        | Alt-      | Ctrl-Shift- | F-key |
+|--------------|-----------|-------------|-------|
+| Explorer     | `Alt-1`   | `Ctrl-Shift-1` | `F1`  |
+| Docker       | `Alt-2`   | `Ctrl-Shift-2` | `F5`  |
+| Terminal     | `Alt-3`   | `Ctrl-Shift-3` | `F6`  |
+| SSH wizard   | `Alt-4`   | `Ctrl-Shift-4` | `F8`  |
+| Open folder  | `Alt-5`   | `Ctrl-Shift-5` | `F9`  |
+
+None of the three is reliable in every terminal, which is why all three
+exist rather than just one:
+
+* **Alt-** (Option on macOS) only sends a real Alt/Meta modifier if you've
+  turned that on in your terminal's settings ("Use Option as Meta Key" in
+  Terminal.app, "Option Key Sends Esc+" in iTerm2). Without it, Option+key
+  just types an accented character with no modifier at all.
+* **Ctrl-Shift-\<digit\>** has no key mapping at all in macOS's
+  Terminal.app - you'll hear the system beep and nothing will be sent to
+  micro (or any program) either way.
+* **F-keys** are the most broadly compatible in practice, but can be
+  claimed by a specific terminal app or window manager for their own
+  shortcuts (help, fullscreen, Mission Control, ...) on some setups.
+* **Cmd** is never forwarded to any terminal application at all - the OS
+  reserves it - so it can't be bound to anything here regardless.
+
+If none of the three keybindings do anything for you, the `Ctrl-e` +
+command path above always works.
 
 The left sidebar has a small activity strip on its far left edge (an `E` and
 a `D`) that you can click to switch between the Explorer and Docker views,

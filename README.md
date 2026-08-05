@@ -61,20 +61,27 @@ of it is fully mouse-driven as well as keyboard-driven.
 
 ### New hotkeys at a glance
 
-| Key                        | Action                                     |
-|----------------------------|-----------------------------------------------|
-| `Alt-1` / `Ctrl-Shift-1`   | Toggle the Explorer                            |
-| `Alt-2` / `Ctrl-Shift-2`   | Toggle the Docker view                         |
-| `Alt-3` / `Ctrl-Shift-3`   | Toggle the terminal panel                      |
-| `Alt-4` / `Ctrl-Shift-4`   | Open the SSH connect/disconnect wizard         |
-| `Alt-5` / `Ctrl-Shift-5`   | Change working directory / open a folder       |
+The reliable one: `Ctrl-e` (command mode) then `explorer` / `docker` / `termpanel` /
+`ssh` / `openfolder` + Enter - works in every terminal, no configuration needed.
 
-Each has a Ctrl-Shift- fallback because Alt is unreliable in some terminals -
-notably macOS, where Option only sends a real Alt/Meta modifier if you've enabled
-that in your terminal's settings, and Cmd is never forwarded to any terminal app at
-all. If neither works in your setup, `Ctrl-e` (command mode) then
-`explorer`/`docker`/`termpanel`/`ssh`/`openfolder` + Enter always does the same
-thing, regardless of what your terminal does with modifier keys.
+For a single keystroke, each panel also has three interchangeable bindings - use
+whichever one actually reaches micro in your terminal:
+
+| Keys                              | Action                                 |
+|------------------------------------|-------------------------------------------|
+| `Alt-1` / `Ctrl-Shift-1` / `F1`   | Toggle the Explorer                        |
+| `Alt-2` / `Ctrl-Shift-2` / `F5`   | Toggle the Docker view                     |
+| `Alt-3` / `Ctrl-Shift-3` / `F6`   | Toggle the terminal panel                  |
+| `Alt-4` / `Ctrl-Shift-4` / `F8`   | Open the SSH connect/disconnect wizard     |
+| `Alt-5` / `Ctrl-Shift-5` / `F9`   | Change working directory / open a folder   |
+
+No single one of the three works in every terminal: Alt (Option on macOS) needs
+"Use Option as Meta Key" enabled in your terminal's settings or it just types an
+accented character; Ctrl-Shift-\<digit\> has no key mapping at all in macOS's
+Terminal.app (you'll hear the system beep, nothing gets sent to any program); F-keys
+are the most broadly compatible but can be claimed by a specific terminal app or
+window manager for their own shortcuts. Cmd is never forwarded to any terminal
+application at all, so it can't be bound to anything here regardless of terminal.
 
 Once inside micro, run `> help panels` and `> help ssh` for the full guide to all of the
 above, including every mouse interaction and the terminal panel's tab-management keys.

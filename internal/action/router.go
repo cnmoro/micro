@@ -113,28 +113,42 @@ func ResetRouterMouse() {
 	FileTabs.resetMouse()
 }
 
-// handleGlobalToggle intercepts the fixed Alt-1/Alt-2/Alt-3/Alt-4/Alt-5
-// panel-toggle shortcuts (and their Ctrl-Shift-1..5 fallbacks - see below)
-// so they work no matter which region has keyboard focus (a terminal
-// panel tab, the sidebar, or the editor). Returns true if the event was
-// consumed.
+// handleGlobalToggle intercepts the fixed panel-toggle shortcuts so they
+// work no matter which region has keyboard focus (a terminal panel tab,
+// the sidebar, or the editor). Returns true if the event was consumed.
 //
-// The Ctrl-Shift fallback exists because Alt is unreliable in some
-// terminals: on macOS, Terminal.app/iTerm2 only send a real Alt/Meta
-// modifier for the Option key if "Use Option as Meta Key" (or "Option Key
-// Sends Esc+") is explicitly enabled in the terminal's own settings -
-// without that, Option+key just types a composed accent character with no
-// modifier bit at all, and Cmd is never forwarded to any terminal app in
-// the first place (the OS/terminal reserves it for their own shortcuts).
-// F-keys were tried instead but have their own problem: some terminal
-// apps and window managers bind specific F-keys to their own actions
-// (help, fullscreen, Mission Control, ...) and swallow them before micro
-// ever sees them. Both combos are accepted on every OS rather than
-// picking one per platform, since either can independently be the one
-// that actually reaches micro in a given terminal/multiplexer setup - and
-// `> explorer`/`> docker`/`> termpanel`/`> ssh`/`> openfolder` (reachable
-// via Ctrl-e command mode) always work as a last resort regardless of
-// what either keybinding does.
+// Each toggle has three independent ways to trigger it - Alt-<digit>,
+// Ctrl-Shift-<digit>, and F1/F5/F6/F8/F9 - because no single one of them
+// is reliable across every terminal:
+//   - Alt (Option on macOS) only sends a real Alt/Meta modifier if "Use
+//     Option as Meta Key" (or "Option Key Sends Esc+") is explicitly
+//     enabled in the terminal's own settings; without that, Option+key
+//     just types a composed accent character with no modifier at all.
+//   - Ctrl-Shift-<digit> has no defined key mapping in Terminal.app on
+//     macOS at all - the OS beeps and no bytes are even sent to the
+//     terminal program, so there's nothing micro could parse either way.
+//   - F-keys can be intercepted by some terminal apps/window managers for
+//     their own shortcuts (help, fullscreen, Mission Control, ...) before
+//     micro ever sees them.
+//
+// Cmd is never forwarded to any terminal application layer in the first
+// place (macOS reserves it), so it isn't and can't be handled here.
+//
+// All three are accepted on every OS rather than picking one per
+// platform, since which one (if any) actually reaches micro depends on
+// the specific terminal/multiplexer, not just the OS. If none of them
+// work in a given setup, `Ctrl-e` (command mode, a plain Ctrl+letter -
+// the one modifier combo that's actually universal) followed by
+// `explorer`/`docker`/`termpanel`/`ssh`/`openfolder` and Enter always
+// works regardless of what any of these keybindings do.
+var fkeyToggle = map[tcell.Key]rune{
+	tcell.KeyF1: '1',
+	tcell.KeyF5: '2',
+	tcell.KeyF6: '3',
+	tcell.KeyF8: '4',
+	tcell.KeyF9: '5',
+}
+
 // shiftedDigit maps the US-layout shifted glyph of each digit to the
 // digit itself, since some terminals report Ctrl-Shift-<digit> as Ctrl
 // plus the already-shifted symbol rather than as a separate Shift
@@ -145,7 +159,9 @@ var shiftedDigit = map[rune]rune{
 
 func handleGlobalToggle(e *tcell.EventKey) bool {
 	digit := rune(0)
-	if e.Key() == tcell.KeyRune {
+	if d, ok := fkeyToggle[e.Key()]; ok {
+		digit = d
+	} else if e.Key() == tcell.KeyRune {
 		mod := e.Modifiers()
 		r := e.Rune()
 		switch {
