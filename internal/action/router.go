@@ -113,15 +113,54 @@ func ResetRouterMouse() {
 	FileTabs.resetMouse()
 }
 
-// handleGlobalToggle intercepts the fixed Alt-1/Alt-2/Alt-3/Alt-4
-// panel-toggle shortcuts so they work no matter which region has keyboard
-// focus (a terminal panel tab, the sidebar, or the editor). Returns true
-// if the event was consumed.
+// handleGlobalToggle intercepts the fixed Alt-1/Alt-2/Alt-3/Alt-4/Alt-5
+// panel-toggle shortcuts (and their Ctrl-Shift-1..5 fallbacks - see below)
+// so they work no matter which region has keyboard focus (a terminal
+// panel tab, the sidebar, or the editor). Returns true if the event was
+// consumed.
+//
+// The Ctrl-Shift fallback exists because Alt is unreliable in some
+// terminals: on macOS, Terminal.app/iTerm2 only send a real Alt/Meta
+// modifier for the Option key if "Use Option as Meta Key" (or "Option Key
+// Sends Esc+") is explicitly enabled in the terminal's own settings -
+// without that, Option+key just types a composed accent character with no
+// modifier bit at all, and Cmd is never forwarded to any terminal app in
+// the first place (the OS/terminal reserves it for their own shortcuts).
+// F-keys were tried instead but have their own problem: some terminal
+// apps and window managers bind specific F-keys to their own actions
+// (help, fullscreen, Mission Control, ...) and swallow them before micro
+// ever sees them. Both combos are accepted on every OS rather than
+// picking one per platform, since either can independently be the one
+// that actually reaches micro in a given terminal/multiplexer setup - and
+// `> explorer`/`> docker`/`> termpanel`/`> ssh`/`> openfolder` (reachable
+// via Ctrl-e command mode) always work as a last resort regardless of
+// what either keybinding does.
+// shiftedDigit maps the US-layout shifted glyph of each digit to the
+// digit itself, since some terminals report Ctrl-Shift-<digit> as Ctrl
+// plus the already-shifted symbol rather than as a separate Shift
+// modifier bit alongside the bare digit.
+var shiftedDigit = map[rune]rune{
+	'!': '1', '@': '2', '#': '3', '$': '4', '%': '5',
+}
+
 func handleGlobalToggle(e *tcell.EventKey) bool {
-	if e.Key() != tcell.KeyRune || e.Modifiers()&tcell.ModAlt == 0 {
-		return false
+	digit := rune(0)
+	if e.Key() == tcell.KeyRune {
+		mod := e.Modifiers()
+		r := e.Rune()
+		switch {
+		case mod&tcell.ModAlt != 0:
+			digit = r
+		case mod&tcell.ModCtrl != 0:
+			if d, ok := shiftedDigit[r]; ok {
+				digit = d
+			} else if mod&tcell.ModShift != 0 {
+				digit = r
+			}
+		}
 	}
-	switch e.Rune() {
+
+	switch digit {
 	case '1':
 		Sidebar.Toggle(SidebarExplorerView)
 		return true

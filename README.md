@@ -61,13 +61,20 @@ of it is fully mouse-driven as well as keyboard-driven.
 
 ### New hotkeys at a glance
 
-| Key      | Action                                                    |
-|----------|-------------------------------------------------------------|
-| `Alt-1`  | Toggle the Explorer                                          |
-| `Alt-2`  | Toggle the Docker view                                       |
-| `Alt-3`  | Toggle the terminal panel                                    |
-| `Alt-4`  | Open the SSH connect/disconnect wizard                       |
-| `Alt-5`  | Change working directory / open a folder                     |
+| Key                        | Action                                     |
+|----------------------------|-----------------------------------------------|
+| `Alt-1` / `Ctrl-Shift-1`   | Toggle the Explorer                            |
+| `Alt-2` / `Ctrl-Shift-2`   | Toggle the Docker view                         |
+| `Alt-3` / `Ctrl-Shift-3`   | Toggle the terminal panel                      |
+| `Alt-4` / `Ctrl-Shift-4`   | Open the SSH connect/disconnect wizard         |
+| `Alt-5` / `Ctrl-Shift-5`   | Change working directory / open a folder       |
+
+Each has a Ctrl-Shift- fallback because Alt is unreliable in some terminals -
+notably macOS, where Option only sends a real Alt/Meta modifier if you've enabled
+that in your terminal's settings, and Cmd is never forwarded to any terminal app at
+all. If neither works in your setup, `Ctrl-e` (command mode) then
+`explorer`/`docker`/`termpanel`/`ssh`/`openfolder` + Enter always does the same
+thing, regardless of what your terminal does with modifier keys.
 
 Once inside micro, run `> help panels` and `> help ssh` for the full guide to all of the
 above, including every mouse interaction and the terminal panel's tab-management keys.

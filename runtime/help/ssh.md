@@ -9,7 +9,7 @@ never handles credentials itself; everything shells out to your system's
 
 ## Connecting: the SSH wizard
 
-Press `Alt-4` to open the SSH wizard. When you aren't connected to
+Press `Alt-4` (or `Ctrl-Shift-4`) to open the SSH wizard. When you aren't connected to
 anything, it walks you through two quick steps:
 
 1. **Pick a host** - a popup lists every `Host` alias from your
@@ -34,9 +34,9 @@ Once resolved, this:
 You can also connect directly from the command line: `> ssh <target>
 [remote-path]`.
 
-## Alt-4 while already connected
+## Alt-4 / Ctrl-Shift-4 while already connected
 
-Press `Alt-4` again while connected and you'll get a popup instead:
+Press `Alt-4` (or `Ctrl-Shift-4`) again while connected and you'll get a popup instead:
 
 * **Disconnect from `<target>`** - closes the current session and falls
   back to whatever you were connected to before (or to local, if this was

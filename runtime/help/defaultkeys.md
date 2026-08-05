@@ -142,10 +142,26 @@ Warning! The function keys may not work in all terminals!
 
 ## IDE-style panels (see `> help panels`)
 
-| Key    | Action                                     |
-|------- |-------------------------------------------- |
-| Alt-1  | Toggle the Explorer (left sidebar)          |
-| Alt-2  | Toggle the Docker view (left sidebar)       |
-| Alt-3  | Toggle the terminal panel (bottom)          |
-| Alt-4  | Open the SSH connect/disconnect wizard (see `> help ssh`) |
-| Alt-5  | Change the working directory / open a folder (see `> help panels`) |
+Each of these has both an Alt- binding and a Ctrl-Shift- fallback that
+does the exact same thing - use whichever actually reaches micro in your
+terminal (see the note below the table).
+
+| Key                  | Action                                     |
+|--------------------- |-------------------------------------------- |
+| Alt-1 / Ctrl-Shift-1 | Toggle the Explorer (left sidebar)          |
+| Alt-2 / Ctrl-Shift-2 | Toggle the Docker view (left sidebar)       |
+| Alt-3 / Ctrl-Shift-3 | Toggle the terminal panel (bottom)          |
+| Alt-4 / Ctrl-Shift-4 | Open the SSH connect/disconnect wizard (see `> help ssh`) |
+| Alt-5 / Ctrl-Shift-5 | Change the working directory / open a folder (see `> help panels`) |
+
+**If Alt- doesn't do anything (common on macOS):** terminal apps only send
+a real Alt/Meta modifier for the Option key if you've explicitly enabled
+it - "Use Option as Meta Key" in Terminal.app's profile settings, or
+"Option Key Sends Esc+" in iTerm2's Profiles → Keys. Without that, Option
+just types an accented character with no modifier at all, and Cmd is
+never forwarded to any terminal app in the first place (the OS reserves
+it). Either flip that setting, or use the Ctrl-Shift- version instead -
+though note that not every terminal reports Ctrl-Shift-<digit> as a
+distinct combo either, so if *neither* works, `Ctrl-e` (command mode) then
+`explorer`/`docker`/`termpanel`/`ssh`/`openfolder` + Enter always does the
+same thing regardless of what your terminal does with modifier keys.

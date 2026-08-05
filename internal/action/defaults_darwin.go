@@ -94,11 +94,19 @@ var bufdefaults = map[string]string{
 	"Esc": "Escape,Deselect,ClearInfo,RemoveAllMultiCursors,UnhighlightSearch",
 
 	// IDE-style panels
-	"Alt-1": "ToggleExplorer",
-	"Alt-2": "ToggleDocker",
-	"Alt-3": "ToggleTermPanel",
-	"Alt-4": "ToggleSSH",
-	"Alt-5": "OpenFolder",
+	// Ctrl-Shift- fallbacks are listed alongside the Alt- bindings because
+	// Alt (Option on macOS) is unreliable across terminals unless "Use
+	// Option as Meta Key" is explicitly enabled - see `> help panels`.
+	"Alt-1":      "ToggleExplorer",
+	"CtrlShift1": "ToggleExplorer",
+	"Alt-2":      "ToggleDocker",
+	"CtrlShift2": "ToggleDocker",
+	"Alt-3":      "ToggleTermPanel",
+	"CtrlShift3": "ToggleTermPanel",
+	"Alt-4":      "ToggleSSH",
+	"CtrlShift4": "ToggleSSH",
+	"Alt-5":      "OpenFolder",
+	"CtrlShift5": "OpenFolder",
 
 	// Mouse bindings
 	"MouseWheelUp":     "ScrollUp",

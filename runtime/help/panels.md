@@ -23,15 +23,23 @@ name means it has unsaved changes.
 
 ## Toggling the panels
 
-* `Alt-1`: toggle the Explorer (left sidebar)
-* `Alt-2`: toggle the Docker view (left sidebar)
-* `Alt-3`: toggle the terminal panel (bottom)
-* `Alt-4`: open the SSH connect/disconnect wizard (see `> help ssh`)
-* `Alt-5`: change the working directory / open a local folder
+* `Alt-1` (or `Ctrl-Shift-1`): toggle the Explorer (left sidebar)
+* `Alt-2` (or `Ctrl-Shift-2`): toggle the Docker view (left sidebar)
+* `Alt-3` (or `Ctrl-Shift-3`): toggle the terminal panel (bottom)
+* `Alt-4` (or `Ctrl-Shift-4`): open the SSH connect/disconnect wizard (see `> help ssh`)
+* `Alt-5` (or `Ctrl-Shift-5`): change the working directory / open a local folder
 
 These keybindings work no matter which part of the editor currently has
 focus. You can also use the commands `> explorer`, `> docker` and
 `> termpanel`.
+
+If Alt- doesn't seem to do anything - common on macOS, where Option only
+sends a real Alt/Meta modifier if you've turned that on in your terminal's
+settings, and Cmd is never forwarded to any terminal app at all - try the
+Ctrl-Shift- version instead. If that doesn't work either (some terminals
+don't report it as a distinct combo), `Ctrl-e` (command mode) then
+`explorer`/`docker`/`termpanel` + Enter always works; see
+`> help defaultkeys` for the full explanation.
 
 The left sidebar has a small activity strip on its far left edge (an `E` and
 a `D`) that you can click to switch between the Explorer and Docker views,
@@ -66,7 +74,7 @@ micro's working directory - at that folder) and **Cancel**.
 
 ### Changing the working directory
 
-Press `Alt-5` (or run `> openfolder`) to switch the Explorer to a
+Press `Alt-5`/`Ctrl-Shift-5` (or run `> openfolder`) to switch the Explorer to a
 different local folder - the equivalent of VS Code's "Open Folder". It
 prompts for a path (prefilled with the current directory, Tab-completes
 like any file path) and, once you confirm, changes micro's working
