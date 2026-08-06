@@ -1,4 +1,4 @@
-//go:build linux || darwin || dragonfly || solaris || openbsd || netbsd || freebsd
+//go:build !plan9 && !nacl
 
 package action
 

@@ -191,9 +191,8 @@ func (tp *TerminalPanel) NewTabWithCommand(name string, argv []string) {
 // stopTerm forcibly ends a panel terminal's shell process by closing its
 // pty, matching what shell.Terminal.Stop does on natural exit.
 func stopTerm(t *shell.Terminal) {
-	if t.Status == shell.TTRunning && t.Term != nil {
-		t.Term.File().Close()
-		t.Term.Close()
+	if t.Status == shell.TTRunning {
+		t.ForceStop()
 	}
 }
 

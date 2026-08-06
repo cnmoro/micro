@@ -22,6 +22,7 @@ require (
 )
 
 require (
+	github.com/UserExistsError/conpty v0.1.4 // indirect
 	github.com/creack/pty v1.1.18 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/gdamore/encoding v1.0.0 // indirect

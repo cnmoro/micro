@@ -42,6 +42,8 @@ of it is fully mouse-driven as well as keyboard-driven.
   - `Ctrl-t Ctrl-t` new tab, `Ctrl-w Ctrl-w` close tab, `Ctrl-n Ctrl-n` rename tab,
     `Ctrl-o Ctrl-o` send focus back to the editor.
   - Drag an empty part of the tab strip to resize the panel.
+  - On Windows this runs on ConPTY (Windows 10 1809+, the same mechanism
+    Windows Terminal/VS Code use).
 - **SSH - Remote** (`Alt-4`) - VS Code Remote-SSH-style remote editing, built entirely on
   your existing `ssh`/Docker CLI setup (no credentials are ever handled by micro).
   - Opens a small wizard: pick a host from `~/.ssh/config` (or type one), then a remote

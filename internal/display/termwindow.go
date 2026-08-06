@@ -31,7 +31,7 @@ func (w *TermWindow) Resize(width, height int) {
 	if config.GetGlobalOption("statusline").(bool) {
 		height--
 	}
-	w.Term.Resize(width, height)
+	w.Terminal.ResizePTY(width, height)
 	w.Width, w.Height = width, height
 }
 

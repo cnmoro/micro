@@ -147,7 +147,7 @@ splits, that can hold any number of terminal tabs.
 Everything else you type is sent straight to the shell running in the
 active terminal tab, exactly like micro's existing `> term` command.
 
-**Not available on Windows**: the terminal panel (and `> term`) needs a
-real PTY, which isn't implemented for Windows in the terminal-emulation
-library micro uses. Opening it there shows an error explaining this
-instead of a panel.
+**On Windows**, this runs on ConPTY (the same pseudo-console mechanism
+Windows Terminal/VS Code use), which requires Windows 10 1809 or later.
+On anything older, opening the panel shows an error explaining that
+instead of a broken one.

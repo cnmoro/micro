@@ -64,13 +64,10 @@ target:path" message in the info bar once it lands.
 
 ## Limitations
 
-* **On Windows, connecting still browses/manages the remote host fine
-  (Explorer and Docker are just one-shot `ssh`/`docker` subprocess calls),
-  but no interactive remote shell opens** - the integrated terminal panel
-  needs a real PTY, which the terminal-emulation library micro uses has no
-  Windows implementation of yet (this also affects the plain `> term`
-  command, unrelated to SSH). Use an external SSH client (e.g. Windows
-  Terminal, PuTTY) for an interactive remote shell in the meantime.
+* On Windows, the remote shell runs through ConPTY, which requires
+  Windows 10 1809 or later (Explorer and Docker work regardless, and on
+  any Windows version, since those are just one-shot `ssh`/`docker`
+  subprocess calls with no PTY involved).
 * Directory listings use `find`/GNU `ls` conventions and assume a
   POSIX-like remote shell (Linux/macOS/WSL); this is not tested against
   particularly unusual remote setups.

@@ -130,18 +130,19 @@ func connectRemote(target, remotePath string) {
 			Sidebar.docker.Invalidate()
 			Sidebar.Show(SidebarExplorerView)
 
-			if TermEmuSupported {
-				remoteShell := "cd " + remote.Quote(resolved) + " 2>/dev/null; exec \"${SHELL:-/bin/sh}\" -l"
-				TermPanel.NewTabWithCommand("ssh:"+target, []string{"ssh", "-t", target, remoteShell})
+			// Explorer/Docker are ready regardless of terminal support -
+			// they're just one-shot ssh/docker subprocess calls, no PTY
+			// involved. Opening the remote shell tab needs one, though,
+			// so check whether it actually landed before claiming success:
+			// if it failed, NewTabWithCommand already posted its own
+			// explanation to the info bar, and overwriting it with
+			// "Connected" right after would just be confusing.
+			tabsBefore := len(TermPanel.tabs)
+			remoteShell := "cd " + remote.Quote(resolved) + " 2>/dev/null; exec \"${SHELL:-/bin/sh}\" -l"
+			TermPanel.NewTabWithCommand("ssh:"+target, []string{"ssh", "-t", target, remoteShell})
+			if len(TermPanel.tabs) > tabsBefore {
 				TermPanel.Show()
 				InfoBar.Message("Connected to " + target + ":" + resolved)
-			} else {
-				// No PTY support on this platform (currently Windows) -
-				// Explorer/Docker still work fine since they're just
-				// one-shot `ssh`/`docker` subprocess calls, but an
-				// interactive remote shell needs a real terminal
-				// emulator, which isn't available here.
-				InfoBar.Message("Connected to " + target + ":" + resolved + " (no integrated terminal on this platform - use an external SSH client for a shell)")
 			}
 		}}
 	}()
