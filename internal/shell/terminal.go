@@ -2,6 +2,7 @@ package shell
 
 import (
 	"bytes"
+	"sync"
 
 	"github.com/micro-editor/micro/v2/internal/buffer"
 	"github.com/micro-editor/micro/v2/internal/screen"
@@ -53,6 +54,8 @@ type Terminal struct {
 	callback  CallbackFunc
 
 	winPty winPTY // non-nil only on Windows, once Start has run
+
+	closeOnce sync.Once // guards teardown (see doStop)
 }
 
 // HasSelection returns whether this terminal has a valid selection
@@ -138,14 +141,37 @@ func (t *Terminal) ResizePTY(cols, rows int) {
 	}
 }
 
+// doStop tears down the pty/ConPTY exactly once, however many times or
+// from however many goroutines Stop/ForceStop get called. Without this,
+// a user-initiated ForceStop (terminal panel closing a tab) races with
+// parseLoop's own Stop call (fired when that same close unblocks Term.Parse
+// with an error) and both independently close the same handles again. On
+// a Unix *os.File that second Close is a harmless no-op error, but on
+// Windows it's a second raw CloseHandle/ClosePseudoConsole on values the
+// OS is free to have already recycled for something else in the process by
+// then - which can take down far more than just this terminal.
+func (t *Terminal) doStop() {
+	t.closeOnce.Do(func() {
+		if t.winPty != nil {
+			// On Windows, Term.File() is always nil (no separate pty
+			// file - see winPTY's doc comment) and Term.Close() closes
+			// this same winPty, so closing it once here is sufficient.
+			t.winPty.Close()
+			return
+		}
+		if t.Term != nil {
+			if f := t.Term.File(); f != nil {
+				f.Close()
+			}
+			t.Term.Close()
+		}
+	})
+}
+
 // Stop stops execution of the terminal and sets the Status
 // to TTDone
 func (t *Terminal) Stop() {
-	if t.winPty != nil {
-		t.winPty.Close()
-	}
-	t.Term.File().Close()
-	t.Term.Close()
+	t.doStop()
 	if t.wait {
 		t.Status = TTDone
 	} else {
@@ -160,13 +186,7 @@ func (t *Terminal) Stop() {
 // user explicitly asked to close) that manage their own bookkeeping and
 // just need the underlying process gone.
 func (t *Terminal) ForceStop() {
-	if t.winPty != nil {
-		t.winPty.Close()
-	}
-	if t.Term != nil {
-		t.Term.File().Close()
-		t.Term.Close()
-	}
+	t.doStop()
 }
 
 // Close sets the Status to TTClose indicating that the terminal

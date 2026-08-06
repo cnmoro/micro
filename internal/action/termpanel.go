@@ -7,6 +7,7 @@ import (
 	"github.com/micro-editor/micro/v2/internal/buffer"
 	"github.com/micro-editor/micro/v2/internal/config"
 	"github.com/micro-editor/micro/v2/internal/display"
+	"github.com/micro-editor/micro/v2/internal/remote"
 	"github.com/micro-editor/micro/v2/internal/screen"
 	"github.com/micro-editor/micro/v2/internal/shell"
 	"github.com/micro-editor/tcell/v2"
@@ -145,8 +146,20 @@ func (tp *TerminalPanel) resetMouse() {
 }
 
 // NewTab opens a new shell and adds it as a tab; if name is empty a default
-// "Terminal N" name is used.
+// "Terminal N" name is used. While an SSH session is active, this opens
+// another remote shell on that host (matching VS Code Remote-SSH's "new
+// terminal" behavior) instead of a local one - a plain local shell is very
+// rarely what's wanted here, since it can't reach the remote files/Docker
+// the rest of the UI is currently pointed at.
 func (tp *TerminalPanel) NewTab(name string) {
+	if Remote != nil {
+		if name == "" {
+			name = "ssh:" + Remote.Target
+		}
+		remoteShell := "cd " + remote.Quote(Remote.Path) + " 2>/dev/null; exec \"${SHELL:-/bin/sh}\" -l"
+		tp.NewTabWithCommand(name, []string{"ssh", "-t", Remote.Target, remoteShell})
+		return
+	}
 	tp.NewTabWithCommand(name, defaultShellArgs())
 }
 
@@ -463,7 +476,7 @@ func (tp *TerminalPanel) handleKey(e *tcell.EventKey) {
 		return
 	}
 	if active.Status != shell.TTDone {
-		active.WriteString(e.EscSeq())
+		active.WriteString(keyBytes(e))
 	}
 }
 
