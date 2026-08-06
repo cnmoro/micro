@@ -1173,12 +1173,7 @@ func (h *BufPane) TermCmd(args []string) {
 	}
 
 	if len(args) == 0 {
-		sh := os.Getenv("SHELL")
-		if sh == "" {
-			InfoBar.Error("Shell environment not found")
-			return
-		}
-		args = []string{sh}
+		args = defaultShellArgs()
 	}
 
 	// If there is only one open file we make a new tab instead of overwriting it

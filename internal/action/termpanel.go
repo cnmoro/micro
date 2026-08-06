@@ -2,7 +2,6 @@ package action
 
 import (
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/micro-editor/micro/v2/internal/buffer"
@@ -148,11 +147,7 @@ func (tp *TerminalPanel) resetMouse() {
 // NewTab opens a new shell and adds it as a tab; if name is empty a default
 // "Terminal N" name is used.
 func (tp *TerminalPanel) NewTab(name string) {
-	sh := os.Getenv("SHELL")
-	if sh == "" {
-		sh = "/bin/sh"
-	}
-	tp.NewTabWithCommand(name, []string{sh})
+	tp.NewTabWithCommand(name, defaultShellArgs())
 }
 
 // NewTabWithCommand opens a new tab running the given argv (e.g. `docker
