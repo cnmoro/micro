@@ -91,10 +91,15 @@ func (tp *TerminalPanel) Visible() bool { return tp.visible }
 
 // Show makes the terminal panel visible, opening a first tab if none exist.
 func (tp *TerminalPanel) Show() {
-	tp.visible = true
 	if len(tp.tabs) == 0 {
 		tp.NewTab("")
+		if len(tp.tabs) == 0 {
+			// NewTab failed (e.g. unsupported platform, already reported
+			// to the info bar) - don't show an empty, unusable panel.
+			return
+		}
 	}
+	tp.visible = true
 	Tabs.Resize()
 	FocusedRegion = RegionTermPanel
 }
@@ -154,6 +159,10 @@ func (tp *TerminalPanel) NewTab(name string) {
 // logs -f <id>`) instead of the user's shell; if name is empty a default
 // "Terminal N" name is used.
 func (tp *TerminalPanel) NewTabWithCommand(name string, argv []string) {
+	if !TermEmuSupported {
+		InfoBar.Error("The integrated terminal isn't available on this platform (no PTY support here yet - this affects Windows). SSH file browsing and Docker management still work; use an external terminal for an interactive remote shell.")
+		return
+	}
 	t := new(shell.Terminal)
 	if err := t.Start(argv, false, true, nil, nil); err != nil {
 		InfoBar.Error(err)

@@ -128,13 +128,21 @@ func connectRemote(target, remotePath string) {
 			docker.RemoteHost = target
 			Sidebar.explorer.SetRemote(target, resolved)
 			Sidebar.docker.Invalidate()
-
-			remoteShell := "cd " + remote.Quote(resolved) + " 2>/dev/null; exec \"${SHELL:-/bin/sh}\" -l"
-			TermPanel.NewTabWithCommand("ssh:"+target, []string{"ssh", "-t", target, remoteShell})
-			TermPanel.Show()
 			Sidebar.Show(SidebarExplorerView)
 
-			InfoBar.Message("Connected to " + target + ":" + resolved)
+			if TermEmuSupported {
+				remoteShell := "cd " + remote.Quote(resolved) + " 2>/dev/null; exec \"${SHELL:-/bin/sh}\" -l"
+				TermPanel.NewTabWithCommand("ssh:"+target, []string{"ssh", "-t", target, remoteShell})
+				TermPanel.Show()
+				InfoBar.Message("Connected to " + target + ":" + resolved)
+			} else {
+				// No PTY support on this platform (currently Windows) -
+				// Explorer/Docker still work fine since they're just
+				// one-shot `ssh`/`docker` subprocess calls, but an
+				// interactive remote shell needs a real terminal
+				// emulator, which isn't available here.
+				InfoBar.Message("Connected to " + target + ":" + resolved + " (no integrated terminal on this platform - use an external SSH client for a shell)")
+			}
 		}}
 	}()
 }
