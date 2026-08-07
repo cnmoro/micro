@@ -22,17 +22,17 @@ const (
 var FocusedRegion Region = RegionEditor
 
 // setFocusedRegion changes which region has keyboard focus, resetting the
-// fake cursor (Windows console default; see screen.ResetFakeCursor) on
-// every transition. The fake cursor is a single reversed screen cell that
-// only self-corrects if whichever region owns it keeps redrawing it every
-// frame without fail; each region only does that conditionally (while
-// it's active, and for the terminal panel, only while the remote
-// program's own cursor-visible state is set) - so a region change is
-// exactly when a stale mark from the region focus is leaving can end up
-// stuck on screen with nothing left to clean it up or draw a new one.
+// cursor (see screen.ResetCursor) on every transition. Whichever cursor
+// mechanism is in play only stays correct if whichever region owns it
+// keeps redrawing it every frame without fail; each region only does that
+// conditionally (while it's active, and for the terminal panel, only
+// while the remote program's own cursor-visible state is set) - so a
+// region change is exactly when stale cursor state from the region focus
+// is leaving can end up stuck with nothing left to clean it up or draw a
+// new one.
 func setFocusedRegion(r Region) {
 	if r != FocusedRegion {
-		screen.ResetFakeCursor()
+		screen.ResetCursor()
 	}
 	FocusedRegion = r
 }

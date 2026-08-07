@@ -90,37 +90,37 @@ func ShowFakeCursor(x, y int) {
 	lastCursor.style = style
 }
 
-// ResetFakeCursor erases the fake cursor's current mark (restoring
-// whatever it was covering) and forgets its tracked position.
+// ResetCursor clears whichever cursor mechanism is in play - erasing the
+// fake cursor's current mark (restoring whatever it was covering) if
+// UseFake(), or explicitly hiding the real terminal cursor otherwise - and
+// forgets any tracked position.
 //
-// The fake cursor is drawn by reversing one cell's style and remembering
-// that single cell in the package-level lastCursor var; on every
-// subsequent call, ShowFakeCursor un-reverses that remembered cell before
-// reversing the new one. That's only self-correcting if something calls
-// ShowFakeCursor/ShowFakeCursorMulti every single frame without fail -
-// every region that owns a cursor (the buffer editor, the terminal panel,
-// the info bar prompt) only does so conditionally (only while it's the
-// active region, and for the terminal panel, only while the remote
-// program's own cursor-visible flag is set). If focus moves to a region
-// that skips drawing its cursor for even one frame - most plausibly the
-// terminal panel, right when a freshly connected SSH session's first
-// output hasn't yet reported a cursor-visible ANSI sequence - the
-// previous region's reversed mark is never un-reversed, and nothing new
-// is drawn either: no cursor is visible anywhere, and it stays that way
-// until something happens to draw over that exact cell by coincidence.
-// Call this on every focus-region change (see action.FocusedRegion) so a
-// stale mark from whichever region focus is leaving never lingers past
-// the transition, regardless of whether the region focus is entering
-// manages to draw its own cursor right away.
-func ResetFakeCursor() {
-	if !UseFake() {
+// Every region that owns a cursor (the buffer editor, the terminal panel,
+// the info bar prompt) only draws one conditionally: only while it's the
+// active region, and for the terminal panel specifically, only while the
+// remote program's own cursor-visible flag is set. Both cursor mechanisms
+// need something to actively call them every single frame without fail to
+// stay correct - the fake cursor because ShowFakeCursor's un-reverse step
+// only runs on its next call, the real cursor because nothing else ever
+// hides it once shown. If focus moves to a region that skips its cursor
+// draw for even one frame - most plausibly the terminal panel, right when
+// a freshly connected SSH session's first output hasn't yet reported a
+// cursor-visible ANSI sequence - whatever the previous region left behind
+// (a stale reversed mark, or a real cursor sitting at a now-meaningless
+// position) never gets cleaned up, and nothing new gets drawn either: no
+// cursor visible anywhere, indefinitely. Call this on every focus-region
+// change (see action.FocusedRegion) so neither mechanism can carry stale
+// state across the transition, regardless of whether the region focus is
+// entering manages to draw its own cursor right away.
+func ResetCursor() {
+	if UseFake() {
+		if lastCursor.x >= 0 && lastCursor.y >= 0 {
+			Screen.SetContent(lastCursor.x, lastCursor.y, lastCursor.r, lastCursor.combc, lastCursor.style)
+			lastCursor.x, lastCursor.y = -1, -1
+		}
 		return
 	}
-	if lastCursor.x < 0 || lastCursor.y < 0 {
-		return
-	}
-	Screen.SetContent(lastCursor.x, lastCursor.y, lastCursor.r, lastCursor.combc, lastCursor.style)
-	lastCursor.x, lastCursor.y = -1, -1
+	Screen.HideCursor()
 }
 
 func UseFake() bool {
