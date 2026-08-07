@@ -659,6 +659,26 @@ func (w *BufWindow) displayBuffer() {
 					}
 				}
 
+				// Tint the whole line's background for added/modified
+				// lines (not just the thin gutter marker drawDiffGutter
+				// already draws) - a gutter character alone is easy to
+				// miss, especially at a glance across a wide diff.
+				if b.Settings["diffgutter"].(bool) && !preservebg {
+					diffStyleName := ""
+					switch b.DiffStatus(bloc.Y) {
+					case buffer.DSAdded:
+						diffStyleName = "diff-added"
+					case buffer.DSModified:
+						diffStyleName = "diff-modified"
+					}
+					if diffStyleName != "" {
+						if s, ok := config.Colorscheme[diffStyleName]; ok {
+							fg, _, _ := s.Decompose()
+							style = style.Background(fg)
+						}
+					}
+				}
+
 				for _, m := range b.Messages {
 					if bloc.GreaterEqual(m.Start) && bloc.LessThan(m.End) ||
 						bloc.LessThan(m.End) && bloc.GreaterEqual(m.Start) {

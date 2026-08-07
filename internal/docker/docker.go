@@ -10,6 +10,7 @@ import (
 	"context"
 	"encoding/json"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -343,9 +344,43 @@ func Inspect(kind, id string) (string, error) {
 // LogsArgs returns the argv to stream logs for a container, suitable for
 // handing to the integrated terminal panel - wrapped in `ssh RemoteHost
 // ...` when RemoteHost is set, exactly like the terminal panel's own SSH
-// tabs, since the terminal panel always spawns argv locally itself.
+// tabs, since the terminal panel always spawns argv locally itself. This
+// is the *live* option: the vendored terminal emulator behind the panel
+// has no scrollback buffer at all (scrolled-off lines are simply
+// discarded, not just hidden), so anything beyond the last screenful is
+// gone for good - see FetchLogs for a scrollable alternative.
 func LogsArgs(id string) []string {
 	return terminalArgs("docker", "logs", "-f", "--tail", "200", id)
+}
+
+// FetchLogs returns a container's last `tail` lines of combined
+// stdout+stderr log output as a single static string, meant for a normal
+// (fully scrollable, searchable) read-only editor buffer rather than the
+// terminal panel - trading live updates for actually being able to scroll
+// back through history, which the panel's terminal emulator cannot do.
+func FetchLogs(id string, tail int) (string, error) {
+	args := []string{"logs", "--tail", strconv.Itoa(tail), id}
+	var cmd *exec.Cmd
+	var ctx context.Context
+	var cancel context.CancelFunc
+	if RemoteHost == "" {
+		ctx, cancel = context.WithTimeout(context.Background(), cmdTimeout)
+		cmd = exec.CommandContext(ctx, "docker", args...)
+	} else {
+		ctx, cancel = context.WithTimeout(context.Background(), remoteCmdTimeout)
+		cmd = exec.CommandContext(ctx, "ssh", RemoteHost, remoteScript("docker", args...))
+	}
+	defer cancel()
+
+	// docker logs writes the container's own stdout and stderr both as
+	// legitimate log content (not command-failure diagnostics) - combine
+	// them rather than treating stderr as an error message the way run()
+	// does for every other docker subcommand.
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", &CmdError{Args: args, Msg: errMsg(ctx, err, out, nil)}
+	}
+	return string(out), nil
 }
 
 // ExecArgs returns the argv to open an interactive shell inside a running

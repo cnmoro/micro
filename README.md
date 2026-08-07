@@ -32,8 +32,11 @@ of it is fully mouse-driven as well as keyboard-driven.
   (grouped by compose project), images, networks and volumes.
   - Right-click a row (or press `m`) for start/stop/restart/remove/logs/exec/inspect/prune,
     depending on what's selected.
-  - `l` streams logs and `e` execs a shell into a container, both opening a new terminal
-    panel tab.
+  - `l` opens a container's logs as a scrollable, searchable read-only buffer (a static
+    snapshot - `L` streams them live into a terminal panel tab instead, trading
+    scrollback for real-time updates, since the terminal panel can't scroll back past
+    what's still on screen).
+  - `e` execs a shell into a container, opening a new terminal panel tab.
   - Background operations show a non-blocking animated spinner in the info bar instead of
     freezing the UI.
   - While connected over SSH, every docker command runs on the remote host (`ssh <host>

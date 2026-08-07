@@ -588,6 +588,7 @@ func (d *DockerView) buildMenuItems(idx int) []dockerMenuItem {
 				dockerMenuItem{"Stop", d.stopSelected},
 				dockerMenuItem{"Restart", d.restartSelected},
 				dockerMenuItem{"View logs", d.logsSelected},
+				dockerMenuItem{"View logs (live)", d.liveLogsSelected},
 				dockerMenuItem{"Exec shell", d.execSelected},
 			)
 		} else {
@@ -706,6 +707,9 @@ func (d *DockerView) HandleKey(e *tcell.EventKey) bool {
 		case 'l':
 			d.logsSelected()
 			return true
+		case 'L':
+			d.liveLogsSelected()
+			return true
 		case 'e':
 			d.execSelected()
 			return true
@@ -738,7 +742,32 @@ func (d *DockerView) restartSelected() {
 	})
 }
 
+// logsSelected fetches a bounded, static snapshot of a container's logs
+// into a normal read-only editor buffer - fully scrollable/searchable with
+// micro's usual buffer navigation, unlike the terminal panel (used by
+// liveLogsSelected below), whose vendored terminal emulator has no
+// scrollback at all and simply discards anything scrolled off-screen.
 func (d *DockerView) logsSelected() {
+	d.withContainer(func(c docker.Container) {
+		sp := StartSpinner("Fetching logs for " + c.Names + "...")
+		go func() {
+			out, err := docker.FetchLogs(c.ID, 5000)
+			shell.Jobs <- shell.JobFunction{Function: func(string, []any) {
+				sp.Stop()
+				if err != nil {
+					InfoBar.Error(err)
+					return
+				}
+				openScratchTab("logs:"+c.Names, out)
+			}}
+		}()
+	})
+}
+
+// liveLogsSelected streams logs into a terminal panel tab instead - real
+// time, but (see logsSelected's doc comment) with no way to scroll back
+// past whatever's still on screen.
+func (d *DockerView) liveLogsSelected() {
 	d.withContainer(func(c docker.Container) {
 		TermPanel.NewTabWithCommand("logs:"+c.Names, docker.LogsArgs(c.ID))
 		TermPanel.Show()

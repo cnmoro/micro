@@ -128,7 +128,11 @@ message explaining why it's unavailable.
   * `S`: start
   * `x`: restart
   * `d`: remove (with confirmation)
-  * `l`: stream logs into a new terminal panel tab
+  * `l`: view logs as a static, scrollable/searchable read-only buffer (a snapshot -
+    refresh by pressing `l` again)
+  * `L`: stream logs live into a new terminal panel tab instead - real-time, but with
+    no scrollback at all once something scrolls off screen (the panel's terminal
+    emulator doesn't keep history), unlike `l`
   * `e`: exec an interactive shell into a running container, in a new
     terminal panel tab
   * `i`: inspect (opens the pretty-printed JSON in a new tab)

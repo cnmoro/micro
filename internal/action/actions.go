@@ -1898,9 +1898,38 @@ func (h *BufPane) ClearInfo() bool {
 // ForceQuit closes the tab or view even if there are unsaved changes
 // (no prompt)
 func (h *BufPane) ForceQuit() bool {
+	if h.tab.IsDiffView {
+		// A diff view's two panes are a throwaway, always-unmodified
+		// scratch split (see GitView.openDiff) - close the whole tab in
+		// one step rather than the usual unsplit-then-close-tab two-step
+		// below, since leaving just one half open (whichever pane wasn't
+		// focused) isn't a view anyone asked for.
+		for _, p := range h.tab.Panes {
+			if bp, ok := p.(*BufPane); ok {
+				bp.Buf.Close()
+			}
+		}
+		if len(Tabs.List) > 1 {
+			Tabs.RemoveTab(h.tab.Panes[0].ID())
+		} else {
+			screen.Screen.Fini()
+			InfoBar.Close()
+			runtime.Goexit()
+		}
+		return true
+	}
+
 	h.Buf.Close()
 	if len(h.tab.Panes) > 1 {
 		h.Unsplit()
+	} else if FileTabs != nil && len(FileTabs.tabs) > 1 {
+		// Closing the tab/quitting shouldn't skip past other files still
+		// open in the file tab strip - without this, Quit on a pane with
+		// 2+ FileTabs entries but only ever one real Pane/Tab (the
+		// common case) would fall straight through to "this is the last
+		// tab" below and quit the whole app despite other files still
+		// being open, just not in this Pane/Tab sense.
+		FileTabs.CloseTab(FileTabs.active)
 	} else if len(Tabs.List) > 1 {
 		Tabs.RemoveTab(h.splitID)
 	} else {
