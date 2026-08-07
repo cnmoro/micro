@@ -82,8 +82,56 @@ func Unlock() {
 	lock.Unlock()
 }
 
-// Redraw schedules a redraw with the draw channel
+// minRedrawInterval caps how often Redraw actually triggers a frame.
+// Background sources that call Redraw once per small chunk of new data
+// (chiefly the terminal panel's parse loop - an SSH session's round trip
+// means new output often arrives in a steady trickle of tiny reads rather
+// than bursts, so channel backpressure alone doesn't coalesce them) can
+// otherwise drive full redraws upward of 100/s. Every one of those also
+// does an unconditional Screen.HideCursor() before the frame's own
+// Display() calls decide whether to show a cursor again - so at that
+// rate the real terminal cursor is being hidden and re-shown far faster
+// than any terminal can render smoothly, which reads as a flickering,
+// often oddly-shaped cursor rather than a stable blinking one. A cap
+// around 30fps is still far more than a text editor needs and well
+// within normal cursor blink-rate territory.
+const minRedrawInterval = 33 * time.Millisecond
+
+var (
+	redrawLock    sync.Mutex
+	lastRedrawAt  time.Time
+	redrawPending bool
+)
+
+// Redraw schedules a redraw with the draw channel, throttled to
+// minRedrawInterval. A request inside the throttle window isn't dropped -
+// exactly one trailing redraw is scheduled for when the window ends, so
+// the most recent state still always renders, just not sooner than the
+// cap allows.
 func Redraw() {
+	redrawLock.Lock()
+	defer redrawLock.Unlock()
+
+	since := time.Since(lastRedrawAt)
+	if since >= minRedrawInterval {
+		lastRedrawAt = time.Now()
+		sendRedraw()
+		return
+	}
+	if redrawPending {
+		return
+	}
+	redrawPending = true
+	time.AfterFunc(minRedrawInterval-since, func() {
+		redrawLock.Lock()
+		defer redrawLock.Unlock()
+		redrawPending = false
+		lastRedrawAt = time.Now()
+		sendRedraw()
+	})
+}
+
+func sendRedraw() {
 	select {
 	case drawChan <- true:
 	default:
