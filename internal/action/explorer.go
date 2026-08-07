@@ -121,6 +121,7 @@ func (e *Explorer) navigateUp() {
 		if Remote != nil {
 			Remote.Path = parent
 		}
+		Sidebar.git.Invalidate()
 		return
 	}
 	if bp := MainTab().CurPane(); bp != nil {
@@ -130,6 +131,7 @@ func (e *Explorer) navigateUp() {
 		return
 	}
 	e.SetLocal()
+	Sidebar.git.Invalidate()
 }
 
 // openFolderHere re-roots the Explorer (and, if local, micro's working
@@ -141,6 +143,7 @@ func (e *Explorer) openFolderHere(path string) {
 		if Remote != nil {
 			Remote.Path = path
 		}
+		Sidebar.git.Invalidate()
 		return
 	}
 	changeWorkDir(path)

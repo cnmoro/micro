@@ -82,20 +82,23 @@ func labelValue(labels, key string) string {
 }
 
 // RemoteHost, when non-empty, is an SSH destination (e.g. "user@host" or a
-// ~/.ssh/config alias) that every docker CLI invocation is pointed at via
-// `-H ssh://<RemoteHost>`, using the Docker CLI's own built-in SSH
-// transport - the same mechanism `docker context create --docker
-// host=ssh://...` uses - so no separate remote Docker API client is needed.
+// ~/.ssh/config alias) that every docker CLI invocation runs against
+// instead of the local machine. It runs the docker command entirely over
+// `ssh <host> docker ...`, the same way the integrated terminal's remote
+// shell does - not the local docker CLI's own `-H ssh://` transport, which
+// would require docker to be installed on the local machine too (it isn't,
+// on plenty of setups that only have docker on the server being managed).
 var RemoteHost string
 
 func run(args ...string) ([]byte, error) {
-	timeout := cmdTimeout
 	if RemoteHost != "" {
-		args = append([]string{"-H", "ssh://" + RemoteHost}, args...)
-		timeout = remoteCmdTimeout
+		return runRemote(args...)
 	}
+	return runLocal(args...)
+}
 
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+func runLocal(args ...string) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "docker", args...)
 	var out, errOut bytes.Buffer
@@ -110,6 +113,41 @@ func run(args ...string) ([]byte, error) {
 		return out.Bytes(), &CmdError{Args: args, Msg: msg}
 	}
 	return out.Bytes(), nil
+}
+
+func runRemote(args ...string) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), remoteCmdTimeout)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "ssh", RemoteHost, remoteScript("docker", args...))
+	var out, errOut bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errOut
+	err := cmd.Run()
+	if err != nil {
+		msg := strings.TrimSpace(errOut.String())
+		if msg == "" {
+			msg = err.Error()
+		}
+		return out.Bytes(), &CmdError{Args: args, Msg: msg}
+	}
+	return out.Bytes(), nil
+}
+
+// remoteScript builds a single POSIX shell command line (name plus quoted
+// args) to hand to `ssh <host> <script>` - ssh always passes its trailing
+// arguments to the remote login shell as one joined, re-parsed string, so
+// each argument needs its own quoting rather than being passed as separate
+// exec.Command args (which would only be correct for a local, non-ssh exec).
+func remoteScript(name string, args ...string) string {
+	script := shQuote(name)
+	for _, a := range args {
+		script += " " + shQuote(a)
+	}
+	return script
+}
+
+func shQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
 }
 
 // CmdError wraps a failed docker CLI invocation with the command's stderr.
@@ -145,10 +183,16 @@ func parseNDJSON[T any](data []byte) ([]T, error) {
 func Available() (bool, string) {
 	out, err := run("info", "--format", "{{.ServerVersion}}")
 	if err != nil {
-		if _, lookErr := exec.LookPath("docker"); lookErr != nil {
-			return false, "docker is not installed"
+		if RemoteHost == "" {
+			if _, lookErr := exec.LookPath("docker"); lookErr != nil {
+				return false, "docker is not installed"
+			}
+			return false, "docker daemon is not reachable"
 		}
-		return false, "docker daemon is not reachable"
+		// Remote: don't guess "not installed" from a local LookPath check
+		// that says nothing about the remote machine - just surface
+		// whatever `ssh <host> docker ...` itself reported.
+		return false, err.Error()
 	}
 	return true, strings.TrimSpace(string(out))
 }
@@ -279,14 +323,23 @@ func Inspect(kind, id string) (string, error) {
 	return string(out), nil
 }
 
-// LogsArgs returns the argv (excluding "docker" itself) to stream logs for
-// a container, suitable for handing to the integrated terminal panel.
+// LogsArgs returns the argv to stream logs for a container, suitable for
+// handing to the integrated terminal panel - wrapped in `ssh RemoteHost
+// ...` when RemoteHost is set, exactly like the terminal panel's own SSH
+// tabs, since the terminal panel always spawns argv locally itself.
 func LogsArgs(id string) []string {
-	return []string{"docker", "logs", "-f", "--tail", "200", id}
+	return terminalArgs("docker", "logs", "-f", "--tail", "200", id)
 }
 
 // ExecArgs returns the argv to open an interactive shell inside a running
 // container, trying bash and falling back to sh.
 func ExecArgs(id string) []string {
-	return []string{"docker", "exec", "-it", id, "sh", "-c", "exec bash || exec sh"}
+	return terminalArgs("docker", "exec", "-it", id, "sh", "-c", "exec bash || exec sh")
+}
+
+func terminalArgs(name string, args ...string) []string {
+	if RemoteHost == "" {
+		return append([]string{name}, args...)
+	}
+	return []string{"ssh", "-t", RemoteHost, remoteScript(name, args...)}
 }

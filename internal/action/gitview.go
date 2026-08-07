@@ -2,21 +2,25 @@ package action
 
 import (
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 
 	"github.com/micro-editor/micro/v2/internal/buffer"
 	"github.com/micro-editor/micro/v2/internal/config"
 	"github.com/micro-editor/micro/v2/internal/git"
+	"github.com/micro-editor/micro/v2/internal/remote"
 	"github.com/micro-editor/micro/v2/internal/screen"
 	"github.com/micro-editor/micro/v2/internal/shell"
 	"github.com/micro-editor/tcell/v2"
 )
 
 // GitView is the git-status sidebar view: every changed file in the current
-// repository (working directory), colored by status, opening a
-// side-by-side HEAD-vs-working-tree diff on click/Enter.
+// repository - the local working directory, or (while an SSH session is
+// active) the repository at the remote session's path - colored by status,
+// opening a side-by-side HEAD-vs-working-tree diff on click/Enter.
 type GitView struct {
+	host     string // SSH target this data was loaded from, or "" if local
 	repoRoot string
 	branch   string
 	inRepo   bool
@@ -43,10 +47,14 @@ func NewGitView() *GitView {
 }
 
 func (g *GitView) Title() string {
+	title := "GIT"
 	if g.branch != "" {
-		return "GIT (" + g.branch + ")"
+		title += " (" + g.branch + nestSuffix() + ")"
 	}
-	return "GIT"
+	if Remote != nil {
+		title += " @ " + Remote.Target
+	}
+	return title
 }
 
 // Invalidate marks the currently loaded status as stale (e.g. the working
@@ -56,24 +64,31 @@ func (g *GitView) Invalidate() {
 	g.loaded = false
 }
 
-// Refresh reloads the git status of the current working directory in the
-// background.
+// Refresh reloads the git status of the current directory - the active SSH
+// session's path if one is connected, otherwise the local working
+// directory - in the background.
 func (g *GitView) Refresh() {
 	g.loading = true
-	wd, _ := os.Getwd()
+
+	host, dir := "", ""
+	if Remote != nil {
+		host, dir = Remote.Target, Remote.Path
+	} else {
+		dir, _ = os.Getwd()
+	}
 
 	go func() {
-		inRepo, notRepoDetail := git.IsRepo(wd)
+		inRepo, notRepoDetail := git.IsRepo(host, dir)
 		var root, branch, errMsg string
 		var files []git.FileStatus
 		if inRepo {
 			var err error
-			root, err = git.RepoRoot(wd)
+			root, err = git.RepoRoot(host, dir)
 			if err != nil {
 				errMsg = err.Error()
 			} else {
-				branch = git.Branch(root)
-				files, err = git.Status(root)
+				branch = git.Branch(host, root)
+				files, err = git.Status(host, root)
 				if err != nil {
 					errMsg = err.Error()
 				}
@@ -83,11 +98,12 @@ func (g *GitView) Refresh() {
 		shell.Jobs <- shell.JobFunction{Function: func(string, []any) {
 			g.loading = false
 			g.loaded = true
+			g.host = host
 			g.inRepo = inRepo
 			g.repoRoot = root
 			g.branch = branch
 			g.errMsg = errMsg
-			g.checkedDir = wd
+			g.checkedDir = dir
 			g.notRepoDetail = notRepoDetail
 			g.files = files
 			sort.Slice(g.files, func(i, j int) bool { return g.files[i].Path < g.files[j].Path })
@@ -285,6 +301,16 @@ func (g *GitView) HandleKey(e *tcell.EventKey) bool {
 	return false
 }
 
+// joinPath joins root and rel with POSIX semantics when host is a remote
+// target (repoRoot/rel are always remote paths there, regardless of the
+// local OS), or OS-native semantics when working locally.
+func joinPath(host, root, rel string) string {
+	if host != "" {
+		return path.Join(root, rel)
+	}
+	return filepath.Join(root, rel)
+}
+
 // openWorkingFile opens the selected file directly in the editor (not the
 // diff view) - handy once you already know what changed and just want to
 // go fix it.
@@ -292,7 +318,12 @@ func (g *GitView) openWorkingFile(idx int) {
 	if idx < 0 || idx >= len(g.files) {
 		return
 	}
-	openFileInEditor(filepath.Join(g.repoRoot, g.files[idx].Path))
+	full := joinPath(g.host, g.repoRoot, g.files[idx].Path)
+	if g.host != "" {
+		openRemoteFileInEditor(g.host, full)
+		return
+	}
+	openFileInEditor(full)
 }
 
 // openDiff opens a side-by-side HEAD-vs-working-tree diff for the file at
@@ -304,19 +335,27 @@ func (g *GitView) openDiff(idx int) {
 		return
 	}
 	f := g.files[idx]
-	abs := filepath.Join(g.repoRoot, f.Path)
+	full := joinPath(g.host, g.repoRoot, f.Path)
 
-	head, err := git.Show(g.repoRoot, f.Path)
+	head, err := git.Show(g.host, g.repoRoot, f.Path)
 	if err != nil {
 		InfoBar.Error(err)
 		return
 	}
 
 	var working string
-	if data, err := os.ReadFile(abs); err == nil {
+	var readErr error
+	if g.host != "" {
+		var data []byte
+		data, readErr = remote.ReadFile(g.host, full)
 		working = string(data)
-	} else if f.Code != 'D' {
-		InfoBar.Error(err)
+	} else {
+		var data []byte
+		data, readErr = os.ReadFile(full)
+		working = string(data)
+	}
+	if readErr != nil && f.Code != 'D' {
+		InfoBar.Error(readErr)
 		return
 	}
 

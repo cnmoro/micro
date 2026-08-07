@@ -128,6 +128,7 @@ func connectRemote(target, remotePath string) {
 			docker.RemoteHost = target
 			Sidebar.explorer.SetRemote(target, resolved)
 			Sidebar.docker.Invalidate()
+			Sidebar.git.Invalidate()
 			Sidebar.Show(SidebarExplorerView)
 
 			// Explorer/Docker are ready regardless of terminal support -
@@ -169,6 +170,7 @@ func disconnectRemote() {
 		InfoBar.Message("Disconnected from " + target + ", back to local")
 	}
 	Sidebar.docker.Refresh()
+	Sidebar.git.Invalidate()
 }
 
 // disconnectAllRemote drops every nested session at once and returns to
@@ -182,6 +184,7 @@ func disconnectAllRemote() {
 	docker.RemoteHost = ""
 	Sidebar.explorer.SetLocal()
 	Sidebar.docker.Refresh()
+	Sidebar.git.Invalidate()
 	InfoBar.Message("Disconnected, back to local")
 }
 

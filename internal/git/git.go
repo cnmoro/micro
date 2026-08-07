@@ -1,12 +1,23 @@
 // Package git provides thin wrappers around the `git` CLI used by the Git
 // sidebar view: detecting a repository, listing changed files with their
 // status, and reading a file's content as of HEAD for side-by-side diffing.
+//
+// Every function takes a host: "" runs git locally (cmd.Dir = dir); a
+// non-empty host runs it entirely over `ssh <host> git ...` instead - dir
+// is then a path on that remote machine, not the local one - so browsing a
+// repository over SSH needs nothing but git installed on the remote host,
+// matching how the Explorer/terminal/Docker panels already work.
 package git
 
 import (
+	"context"
 	"os/exec"
 	"strings"
+	"time"
 )
+
+const cmdTimeout = 8 * time.Second
+const remoteCmdTimeout = 20 * time.Second
 
 // FileStatus is a single changed file as reported by `git status`.
 type FileStatus struct {
@@ -17,70 +28,102 @@ type FileStatus struct {
 	Staged bool
 }
 
+// run executes `git <args...>` rooted at dir, either locally or (if host is
+// non-empty) over ssh, returning trimmed stdout/stderr separately so
+// callers can tell "ran fine" apart from "ran, but with an empty result"
+// and still get at the failure reason on error.
+func run(host, dir string, args ...string) (string, string, error) {
+	timeout := cmdTimeout
+	var cmd *exec.Cmd
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	if host == "" {
+		cmd = exec.CommandContext(ctx, "git", args...)
+		cmd.Dir = dir
+	} else {
+		timeout = remoteCmdTimeout
+		ctx, cancel = context.WithTimeout(context.Background(), timeout)
+		defer cancel()
+		script := "cd " + shQuote(dir) + " && " + remoteScript("git", args...)
+		cmd = exec.CommandContext(ctx, "ssh", host, script)
+	}
+
+	var out, errOut strings.Builder
+	cmd.Stdout = &out
+	cmd.Stderr = &errOut
+	err := cmd.Run()
+	stdout, stderr := strings.TrimSpace(out.String()), strings.TrimSpace(errOut.String())
+	if err != nil {
+		if stderr == "" {
+			stderr = err.Error()
+		}
+		return stdout, stderr, err
+	}
+	return stdout, stderr, nil
+}
+
+func remoteScript(name string, args ...string) string {
+	script := shQuote(name)
+	for _, a := range args {
+		script += " " + shQuote(a)
+	}
+	return script
+}
+
+func shQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+}
+
 // IsRepo reports whether dir is inside a git working tree. detail is empty
 // when it is; when it isn't, detail explains why - either git's own message
-// (e.g. the usual "fatal: not a git repository...") or, if the git
-// executable itself couldn't be run at all (not installed / not on PATH),
-// a message saying so - so a caller can tell "there's genuinely no repo
-// here" apart from "git isn't usable" instead of collapsing both into the
-// same generic answer.
-func IsRepo(dir string) (bool, string) {
-	cmd := exec.Command("git", "rev-parse", "--is-inside-work-tree")
-	cmd.Dir = dir
-	out, err := cmd.Output()
-	if err == nil {
-		return strings.TrimSpace(string(out)) == "true", ""
+// (e.g. the usual "fatal: not a git repository...") or, if git itself
+// couldn't be run at all (not installed / not on PATH, locally or on the
+// remote host), a message saying so - so a caller can tell "there's
+// genuinely no repo here" apart from "git isn't usable" instead of
+// collapsing both into the same generic answer.
+func IsRepo(host, dir string) (bool, string) {
+	out, errOut, err := run(host, dir, "rev-parse", "--is-inside-work-tree")
+	if err != nil {
+		return false, errOut
 	}
-	if ee, ok := err.(*exec.ExitError); ok {
-		if msg := strings.TrimSpace(string(ee.Stderr)); msg != "" {
-			return false, msg
-		}
-	}
-	return false, "could not run git: " + err.Error()
+	return out == "true", ""
 }
 
 // RepoRoot returns the top-level directory of the repository dir is inside.
-func RepoRoot(dir string) (string, error) {
-	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
-	cmd.Dir = dir
-	out, err := cmd.Output()
+func RepoRoot(host, dir string) (string, error) {
+	out, errOut, err := run(host, dir, "rev-parse", "--show-toplevel")
 	if err != nil {
-		return "", err
+		return "", &CmdError{errOut}
 	}
-	return strings.TrimSpace(string(out)), nil
+	return out, nil
 }
 
 // Branch returns the current branch name, or a short description of a
 // detached HEAD if not on a branch.
-func Branch(dir string) string {
-	cmd := exec.Command("git", "branch", "--show-current")
-	cmd.Dir = dir
-	out, err := cmd.Output()
-	if err == nil {
-		if b := strings.TrimSpace(string(out)); b != "" {
-			return b
-		}
+func Branch(host, dir string) string {
+	if out, _, err := run(host, dir, "branch", "--show-current"); err == nil && out != "" {
+		return out
 	}
-	cmd = exec.Command("git", "rev-parse", "--short", "HEAD")
-	cmd.Dir = dir
-	if out, err := cmd.Output(); err == nil {
-		return "detached@" + strings.TrimSpace(string(out))
+	if out, _, err := run(host, dir, "rev-parse", "--short", "HEAD"); err == nil {
+		return "detached@" + out
 	}
 	return ""
 }
 
 // Status returns every changed (staged, unstaged, or untracked) file in the
 // repository rooted at dir, relative to that root.
-func Status(dir string) ([]FileStatus, error) {
-	cmd := exec.Command("git", "status", "--porcelain=v1", "--untracked-files=all")
-	cmd.Dir = dir
-	out, err := cmd.Output()
+func Status(host, dir string) ([]FileStatus, error) {
+	out, errOut, err := run(host, dir, "status", "--porcelain=v1", "--untracked-files=all")
 	if err != nil {
-		return nil, err
+		return nil, &CmdError{errOut}
+	}
+	if out == "" {
+		return nil, nil
 	}
 
 	var result []FileStatus
-	for _, line := range strings.Split(string(out), "\n") {
+	for _, line := range strings.Split(out, "\n") {
 		if len(line) < 4 {
 			continue
 		}
@@ -143,12 +186,17 @@ func StatusName(code byte) string {
 // Show returns relPath's content as of HEAD, relative to repoRoot. A file
 // with no HEAD version (untracked, or newly added and not yet committed)
 // simply has no history to show, so this returns "" rather than an error.
-func Show(repoRoot, relPath string) (string, error) {
-	cmd := exec.Command("git", "show", "HEAD:"+relPath)
-	cmd.Dir = repoRoot
-	out, err := cmd.Output()
+func Show(host, repoRoot, relPath string) (string, error) {
+	out, _, err := run(host, repoRoot, "show", "HEAD:"+relPath)
 	if err != nil {
 		return "", nil
 	}
-	return string(out), nil
+	return out, nil
 }
+
+// CmdError wraps a failed git invocation with its stderr.
+type CmdError struct {
+	Msg string
+}
+
+func (e *CmdError) Error() string { return e.Msg }

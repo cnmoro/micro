@@ -5,11 +5,12 @@ management view and a **Git** status view (all three sharing the left
 sidebar), and a bottom **terminal panel** supporting multiple named terminal
 tabs. All of them are fully usable with the mouse as well as the keyboard.
 
-The Explorer and Docker view both work against a remote machine over SSH
-too - see `> help ssh`. When connected, their titles show `(target)` so
-it's always clear whether you're looking at local or remote state. The Git
-view always shows the local repository in micro's current working
-directory, regardless of any active SSH session.
+All three of the Explorer, Docker and Git views work against a remote
+machine over SSH too - see `> help ssh`. When connected, their titles show
+the remote target so it's always clear whether you're looking at local or
+remote state. Docker and Git both run entirely on the remote host over
+`ssh` (`ssh <host> docker ...` / `ssh <host> git ...`) rather than needing
+docker/git installed locally - only the remote machine needs them.
 
 ## Recently viewed files
 
@@ -138,8 +139,9 @@ message explaining why it's unavailable.
 ## Git
 
 The Git view lists every changed file (staged, unstaged, or untracked) in
-the git repository rooted at micro's current working directory, each
-prefixed with a colored status letter:
+the git repository at micro's current working directory - or, while
+connected over SSH, at the remote session's current path - each prefixed
+with a colored status letter:
 
 | Letter | Meaning    |
 |--------|------------|

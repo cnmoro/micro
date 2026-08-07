@@ -36,6 +36,8 @@ of it is fully mouse-driven as well as keyboard-driven.
     panel tab.
   - Background operations show a non-blocking animated spinner in the info bar instead of
     freezing the UI.
+  - While connected over SSH, every docker command runs on the remote host (`ssh <host>
+    docker ...`) - only the remote machine needs docker installed, not your local one.
 - **Integrated terminal panel** (`Alt-3`) - a bottom panel, independent of your editor
   splits, with its own tab strip.
   - Click a tab to switch, click its `×` to close, click `+` for a new one.
@@ -45,7 +47,7 @@ of it is fully mouse-driven as well as keyboard-driven.
   - On Windows this runs on ConPTY (Windows 10 1809+, the same mechanism
     Windows Terminal/VS Code use).
 - **SSH - Remote** (`Alt-4`) - VS Code Remote-SSH-style remote editing, built entirely on
-  your existing `ssh`/Docker CLI setup (no credentials are ever handled by micro).
+  your existing `ssh` setup (no credentials are ever handled by micro).
   - Opens a small wizard: pick a host from `~/.ssh/config` (or type one), then a remote
     path. Connecting points the Explorer, Docker view, and a new terminal tab at that host.
   - Press `Alt-4` again while connected to disconnect, or to nest another connection on
@@ -57,11 +59,13 @@ of it is fully mouse-driven as well as keyboard-driven.
   (Tab-completes, prefilled with the current one) and switches micro's working directory
   and Explorer root to it.
 - **Git panel** (`Alt-6`, shares the sidebar with Explorer/Docker) - every changed file in
-  the git repository at micro's working directory, colored by status (`A`dded,
-  `M`odified, `D`eleted, `R`enamed, `C`opied, `U`ntracked, `!` conflict).
+  the git repository at micro's working directory (or, over SSH, the remote session's
+  path), colored by status (`A`dded, `M`odified, `D`eleted, `R`enamed, `C`opied,
+  `U`ntracked, `!` conflict).
   - Click a file (or select it and press `Enter`) for a side-by-side `HEAD`-vs-working-tree
     diff in a new split tab.
   - `o` opens the file directly in the editor instead; `r` refreshes.
+  - Over SSH this runs `ssh <host> git ...` on the remote host, same as Docker above.
 - **Recently-viewed file tabs** - every file you open (Explorer, `Ctrl-o`, `> open`) gets
   a closable tab above the editor. Switching tabs never re-reads the file from disk or
   loses your place - each tab keeps its own buffer alive, cursor position and all, even
