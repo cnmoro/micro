@@ -788,5 +788,5 @@ func switchToFileBuffer(b *buffer.Buffer) {
 		Tabs.AddTab(tp)
 		Tabs.SetActive(len(Tabs.List) - 1)
 	}
-	FocusedRegion = RegionEditor
+	setFocusedRegion(RegionEditor)
 }

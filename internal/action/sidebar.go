@@ -119,14 +119,14 @@ func (s *SidebarPane) Show(kind SidebarViewKind) {
 		s.content().Refresh()
 	}
 	Tabs.Resize()
-	FocusedRegion = RegionSidebar
+	setFocusedRegion(RegionSidebar)
 }
 
 // Hide hides the sidebar.
 func (s *SidebarPane) Hide() {
 	s.visible = false
 	if FocusedRegion == RegionSidebar {
-		FocusedRegion = RegionEditor
+		setFocusedRegion(RegionEditor)
 	}
 	Tabs.Resize()
 }
@@ -297,7 +297,7 @@ func (s *SidebarPane) HandleEvent(event tcell.Event) {
 		}
 	case *tcell.EventKey:
 		if e.Key() == tcell.KeyEscape {
-			FocusedRegion = RegionEditor
+			setFocusedRegion(RegionEditor)
 			return
 		}
 		if s.content().HandleKey(e) {

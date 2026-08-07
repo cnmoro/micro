@@ -1922,13 +1922,17 @@ func (h *BufPane) ForceQuit() bool {
 	h.Buf.Close()
 	if len(h.tab.Panes) > 1 {
 		h.Unsplit()
-	} else if FileTabs != nil && len(FileTabs.tabs) > 1 {
-		// Closing the tab/quitting shouldn't skip past other files still
-		// open in the file tab strip - without this, Quit on a pane with
-		// 2+ FileTabs entries but only ever one real Pane/Tab (the
-		// common case) would fall straight through to "this is the last
-		// tab" below and quit the whole app despite other files still
-		// being open, just not in this Pane/Tab sense.
+	} else if FileTabs != nil && len(FileTabs.tabs) > 0 {
+		// Quit shouldn't reach past a file still open in the file tab
+		// strip straight to "this is the last tab, quit the app" -
+		// without this, Quit on a pane with only ever one real Pane/Tab
+		// (the common case) would do exactly that even with a file open
+		// via the Explorer/Ctrl-o/`> open`, since none of those add a
+		// second Pane/Tab either. Closing the *last* FileTabs entry
+		// correctly falls back to a blank buffer rather than closing
+		// anything further (see FileTabs.CloseTab), so this is safe to
+		// take whenever there's at least one FileTabs entry, not just
+		// when there's more than one.
 		FileTabs.CloseTab(FileTabs.active)
 	} else if len(Tabs.List) > 1 {
 		Tabs.RemoveTab(h.splitID)

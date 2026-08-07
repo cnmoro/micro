@@ -1,6 +1,8 @@
 package action
 
 import (
+	"runtime"
+
 	luar "layeh.com/gopher-luar"
 
 	"github.com/micro-editor/micro/v2/internal/buffer"
@@ -43,8 +45,10 @@ func NewTabList(bufs []*buffer.Buffer) *TabList {
 // correct
 func (t *TabList) UpdateNames() {
 	t.Names = t.Names[:0]
+	t.Closable = t.Closable[:0]
 	for _, p := range t.List {
 		t.Names = append(t.Names, p.Panes[p.active].Name())
+		t.Closable = append(t.Closable, p.IsDiffView)
 	}
 }
 
@@ -73,6 +77,45 @@ func (t *TabList) RemoveTab(id uint64) {
 			return
 		}
 	}
+}
+
+// closeDiffViewTab closes the tab at index i via its × in the tab bar
+// (see TabWindow.Closable/CloseLocFromVisual - i is always a diff-view
+// tab, the only kind that draws one). Unlike RemoveTab, i isn't
+// necessarily the active tab, so the active index needs adjusting when a
+// tab before it is the one that goes away, not just clamped when it goes
+// out of range entirely.
+func (t *TabList) closeDiffViewTab(i int) {
+	if i < 0 || i >= len(t.List) {
+		return
+	}
+	for _, p := range t.List[i].Panes {
+		if bp, ok := p.(*BufPane); ok {
+			bp.Buf.Close()
+		}
+	}
+
+	if len(t.List) == 1 {
+		screen.Screen.Fini()
+		InfoBar.Close()
+		runtime.Goexit()
+	}
+
+	active := t.Active()
+	copy(t.List[i:], t.List[i+1:])
+	t.List[len(t.List)-1] = nil
+	t.List = t.List[:len(t.List)-1]
+
+	switch {
+	case active > i:
+		t.SetActive(active - 1)
+	case active >= len(t.List):
+		t.SetActive(len(t.List) - 1)
+	default:
+		t.SetActive(active)
+	}
+	t.Resize()
+	t.UpdateNames()
 }
 
 // tabBarVisible reports whether the tab bar should be drawn. It is normally
@@ -189,6 +232,8 @@ func (t *TabList) HandleEvent(event tcell.Event) {
 					t.Scroll(-4)
 				} else if mx == t.X+t.Width-1 {
 					t.Scroll(4)
+				} else if ind := t.CloseLocFromVisual(buffer.Loc{mx, my}); ind != -1 {
+					t.closeDiffViewTab(ind)
 				} else {
 					ind := t.LocFromVisual(buffer.Loc{mx, my})
 					if ind != -1 {

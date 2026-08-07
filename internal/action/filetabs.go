@@ -130,7 +130,7 @@ func (ft *FileTabStrip) switchTo(bp *BufPane, i int) {
 	if bp != nil {
 		bp.SwitchBuffer(ft.tabs[i].buf)
 	}
-	FocusedRegion = RegionEditor
+	setFocusedRegion(RegionEditor)
 	Tabs.Resize()
 }
 

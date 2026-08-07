@@ -1,6 +1,7 @@
 package action
 
 import (
+	"github.com/micro-editor/micro/v2/internal/screen"
 	"github.com/micro-editor/tcell/v2"
 )
 
@@ -16,7 +17,25 @@ const (
 // FocusedRegion is the region that currently receives non-mouse (keyboard/paste)
 // events. Mouse events are routed by position instead, and update FocusedRegion
 // as a side effect of a press/drag/wheel event landing in a given region.
+// Set it via setFocusedRegion, not a direct assignment - see that function's
+// doc comment for why.
 var FocusedRegion Region = RegionEditor
+
+// setFocusedRegion changes which region has keyboard focus, resetting the
+// fake cursor (Windows console default; see screen.ResetFakeCursor) on
+// every transition. The fake cursor is a single reversed screen cell that
+// only self-corrects if whichever region owns it keeps redrawing it every
+// frame without fail; each region only does that conditionally (while
+// it's active, and for the terminal panel, only while the remote
+// program's own cursor-visible state is set) - so a region change is
+// exactly when a stale mark from the region focus is leaving can end up
+// stuck on screen with nothing left to clean it up or draw a new one.
+func setFocusedRegion(r Region) {
+	if r != FocusedRegion {
+		screen.ResetFakeCursor()
+	}
+	FocusedRegion = r
+}
 
 // RouteEvent is the single entry point the main loop uses to dispatch a tcell
 // event to the correct region (InfoBar prompt, Sidebar, TermPanel, or the
@@ -76,12 +95,12 @@ func RouteEvent(event tcell.Event) {
 		}
 
 		if Sidebar.visible && Sidebar.Contains(mx, my) {
-			FocusedRegion = RegionSidebar
+			setFocusedRegion(RegionSidebar)
 			Sidebar.HandleEvent(event)
 			return
 		}
 		if TermPanel.visible && TermPanel.Contains(mx, my) {
-			FocusedRegion = RegionTermPanel
+			setFocusedRegion(RegionTermPanel)
 			TermPanel.HandleEvent(event)
 			return
 		}
@@ -90,7 +109,7 @@ func RouteEvent(event tcell.Event) {
 			return
 		}
 
-		FocusedRegion = RegionEditor
+		setFocusedRegion(RegionEditor)
 		Tabs.HandleEvent(event)
 		return
 	}

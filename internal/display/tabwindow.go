@@ -10,12 +10,16 @@ import (
 )
 
 type TabWindow struct {
-	Names   []string
-	active  int
-	X       int
-	Y       int
-	Width   int
-	hscroll int
+	Names []string
+	// Closable marks, per tab (same indexing as Names), whether it should
+	// show a close "×" and respond to clicks on it - used for diff-view
+	// tabs, which otherwise have no visible way to close beyond Ctrl-q.
+	Closable []bool
+	active   int
+	X        int
+	Y        int
+	Width    int
+	hscroll  int
 }
 
 func NewTabWindow(w int, y int) *TabWindow {
@@ -29,16 +33,58 @@ func (w *TabWindow) Resize(width, height int) {
 	w.Width = width
 }
 
+// LocFromVisual maps an absolute screen position to the index of the tab
+// drawn there, or -1. vloc.X must be converted to Display's local
+// (w.X-relative) coordinate space before the column walk - Display draws
+// at w.X+x for its own local x (starting at -w.hscroll, not
+// -w.hscroll-w.X), so comparing a raw absolute vloc.X against that same
+// local x, or double-subtracting w.X, both misidentify every tab whenever
+// w.X != 0 (i.e. whenever something - the sidebar - occupies screen space
+// to the tab bar's left; previously always 0 in practice, which is why
+// this went unnoticed).
 func (w *TabWindow) LocFromVisual(vloc buffer.Loc) int {
-	x := -w.hscroll - w.X
+	if vloc.Y != w.Y {
+		return -1
+	}
+	lx := vloc.X - w.X
+	x := -w.hscroll
 
 	for i, n := range w.Names {
 		x++
 		s := util.CharacterCountInString(n)
-		if vloc.Y == w.Y && vloc.X < x+s {
+		if lx < x+s {
 			return i
 		}
 		x += s
+		x += 3
+		if x >= w.Width {
+			break
+		}
+	}
+	return -1
+}
+
+// CloseLocFromVisual returns the index of the closable tab whose × glyph is
+// at vloc, or -1 if vloc isn't on a × (including on a non-closable tab's
+// trailing space, where a × would be if it had one). Mirrors
+// LocFromVisual's column stepping exactly - each tab occupies "[name] ×"
+// (open bracket, name, close bracket, space, close-glyph), and the ×
+// is always the last of those 3 trailing columns.
+func (w *TabWindow) CloseLocFromVisual(vloc buffer.Loc) int {
+	if vloc.Y != w.Y {
+		return -1
+	}
+	lx := vloc.X - w.X
+	x := -w.hscroll
+
+	for i, n := range w.Names {
+		x++
+		s := util.CharacterCountInString(n)
+		x += s
+		closeCol := x + 2 // ']'(x), ' '(x+1), '×'(x+2)
+		if lx == closeCol && i < len(w.Closable) && w.Closable[i] {
+			return i
+		}
 		x += 3
 		if x >= w.Width {
 			break
@@ -157,12 +203,18 @@ func (w *TabWindow) Display() {
 			done = true
 		}
 
+		closeGlyph := ' '
+		if i < len(w.Closable) && w.Closable[i] {
+			closeGlyph = '×'
+		}
 		if i == w.active {
 			draw(']', 1, true, tabCharHighlight)
-			draw(' ', 2, true, globalTabReverse)
+			draw(' ', 1, true, globalTabReverse)
+			draw(closeGlyph, 1, true, globalTabReverse)
 		} else {
 			draw(' ', 1, false, tabCharHighlight)
-			draw(' ', 2, false, globalTabReverse)
+			draw(' ', 1, false, globalTabReverse)
+			draw(closeGlyph, 1, false, globalTabReverse)
 		}
 
 		if x >= w.Width {

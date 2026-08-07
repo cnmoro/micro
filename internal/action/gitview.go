@@ -403,7 +403,7 @@ func (g *GitView) openDiff(idx int) {
 	if bp := tp.CurPane(); bp != nil {
 		bp.VSplitIndex(rightBuf, true)
 	}
-	FocusedRegion = RegionEditor
+	setFocusedRegion(RegionEditor)
 
 	// Opening another file from the Explorer while this tab is active
 	// collapses it automatically, but there's no other visible way to

@@ -922,5 +922,5 @@ func openScratchTab(name, content string) {
 	tp := NewTabFromBuffer(0, 0, w, h-iOffset, b)
 	Tabs.AddTab(tp)
 	Tabs.SetActive(len(Tabs.List) - 1)
-	FocusedRegion = RegionEditor
+	setFocusedRegion(RegionEditor)
 }

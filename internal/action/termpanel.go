@@ -101,13 +101,13 @@ func (tp *TerminalPanel) Show() {
 	}
 	tp.visible = true
 	Tabs.Resize()
-	FocusedRegion = RegionTermPanel
+	setFocusedRegion(RegionTermPanel)
 }
 
 func (tp *TerminalPanel) Hide() {
 	tp.visible = false
 	if FocusedRegion == RegionTermPanel {
-		FocusedRegion = RegionEditor
+		setFocusedRegion(RegionEditor)
 	}
 	Tabs.Resize()
 }
@@ -460,7 +460,7 @@ func (tp *TerminalPanel) handleKey(e *tcell.EventKey) {
 			case 'n':
 				tp.promptRename()
 			case 'o':
-				FocusedRegion = RegionEditor
+				setFocusedRegion(RegionEditor)
 			}
 			return
 		}

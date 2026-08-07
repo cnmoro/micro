@@ -69,7 +69,7 @@ type screenCell struct {
 	style tcell.Style
 }
 
-var lastCursor screenCell
+var lastCursor = screenCell{x: -1, y: -1}
 
 // ShowFakeCursor displays a cursor at the given position by modifying the
 // style of the given column instead of actually using the terminal cursor
@@ -79,13 +79,48 @@ var lastCursor screenCell
 // a new fake cursor location is specified
 func ShowFakeCursor(x, y int) {
 	r, combc, style, _ := Screen.GetContent(x, y)
-	Screen.SetContent(lastCursor.x, lastCursor.y, lastCursor.r, lastCursor.combc, lastCursor.style)
+	if lastCursor.x >= 0 && lastCursor.y >= 0 {
+		Screen.SetContent(lastCursor.x, lastCursor.y, lastCursor.r, lastCursor.combc, lastCursor.style)
+	}
 	Screen.SetContent(x, y, r, combc, config.DefStyle.Reverse(true))
 
 	lastCursor.x, lastCursor.y = x, y
 	lastCursor.r = r
 	lastCursor.combc = combc
 	lastCursor.style = style
+}
+
+// ResetFakeCursor erases the fake cursor's current mark (restoring
+// whatever it was covering) and forgets its tracked position.
+//
+// The fake cursor is drawn by reversing one cell's style and remembering
+// that single cell in the package-level lastCursor var; on every
+// subsequent call, ShowFakeCursor un-reverses that remembered cell before
+// reversing the new one. That's only self-correcting if something calls
+// ShowFakeCursor/ShowFakeCursorMulti every single frame without fail -
+// every region that owns a cursor (the buffer editor, the terminal panel,
+// the info bar prompt) only does so conditionally (only while it's the
+// active region, and for the terminal panel, only while the remote
+// program's own cursor-visible flag is set). If focus moves to a region
+// that skips drawing its cursor for even one frame - most plausibly the
+// terminal panel, right when a freshly connected SSH session's first
+// output hasn't yet reported a cursor-visible ANSI sequence - the
+// previous region's reversed mark is never un-reversed, and nothing new
+// is drawn either: no cursor is visible anywhere, and it stays that way
+// until something happens to draw over that exact cell by coincidence.
+// Call this on every focus-region change (see action.FocusedRegion) so a
+// stale mark from whichever region focus is leaving never lingers past
+// the transition, regardless of whether the region focus is entering
+// manages to draw its own cursor right away.
+func ResetFakeCursor() {
+	if !UseFake() {
+		return
+	}
+	if lastCursor.x < 0 || lastCursor.y < 0 {
+		return
+	}
+	Screen.SetContent(lastCursor.x, lastCursor.y, lastCursor.r, lastCursor.combc, lastCursor.style)
+	lastCursor.x, lastCursor.y = -1, -1
 }
 
 func UseFake() bool {
