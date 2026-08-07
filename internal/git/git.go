@@ -17,12 +17,26 @@ type FileStatus struct {
 	Staged bool
 }
 
-// IsRepo reports whether dir is inside a git working tree.
-func IsRepo(dir string) bool {
+// IsRepo reports whether dir is inside a git working tree. detail is empty
+// when it is; when it isn't, detail explains why - either git's own message
+// (e.g. the usual "fatal: not a git repository...") or, if the git
+// executable itself couldn't be run at all (not installed / not on PATH),
+// a message saying so - so a caller can tell "there's genuinely no repo
+// here" apart from "git isn't usable" instead of collapsing both into the
+// same generic answer.
+func IsRepo(dir string) (bool, string) {
 	cmd := exec.Command("git", "rev-parse", "--is-inside-work-tree")
 	cmd.Dir = dir
 	out, err := cmd.Output()
-	return err == nil && strings.TrimSpace(string(out)) == "true"
+	if err == nil {
+		return strings.TrimSpace(string(out)) == "true", ""
+	}
+	if ee, ok := err.(*exec.ExitError); ok {
+		if msg := strings.TrimSpace(string(ee.Stderr)); msg != "" {
+			return false, msg
+		}
+	}
+	return false, "could not run git: " + err.Error()
 }
 
 // RepoRoot returns the top-level directory of the repository dir is inside.

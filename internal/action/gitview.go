@@ -24,6 +24,13 @@ type GitView struct {
 	loading  bool
 	errMsg   string
 
+	// checkedDir/notRepoDetail record which directory was last checked and,
+	// if it wasn't a repo, why (git's own error, or "git isn't runnable at
+	// all") - shown in the panel so a wrong-looking result is diagnosable
+	// instead of always reading the same generic message.
+	checkedDir    string
+	notRepoDetail string
+
 	files []git.FileStatus
 
 	selected        int
@@ -56,7 +63,7 @@ func (g *GitView) Refresh() {
 	wd, _ := os.Getwd()
 
 	go func() {
-		inRepo := git.IsRepo(wd)
+		inRepo, notRepoDetail := git.IsRepo(wd)
 		var root, branch, errMsg string
 		var files []git.FileStatus
 		if inRepo {
@@ -80,6 +87,8 @@ func (g *GitView) Refresh() {
 			g.repoRoot = root
 			g.branch = branch
 			g.errMsg = errMsg
+			g.checkedDir = wd
+			g.notRepoDetail = notRepoDetail
 			g.files = files
 			sort.Slice(g.files, func(i, j int) bool { return g.files[i].Path < g.files[j].Path })
 			g.clampSelection()
@@ -157,7 +166,11 @@ func (g *GitView) Display(x, y, w, h int) {
 		return
 	}
 	if !g.inRepo {
-		drawWrapped(x, y, w, h, "Not a git repository (no .git found in the working directory)", style)
+		msg := "Not a git repository: " + g.checkedDir
+		if g.notRepoDetail != "" {
+			msg += " (" + g.notRepoDetail + ")"
+		}
+		drawWrapped(x, y, w, h, msg, style)
 		return
 	}
 	if g.errMsg != "" {
