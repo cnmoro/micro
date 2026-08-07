@@ -323,9 +323,19 @@ func (tp *TerminalPanel) Display() {
 
 	if tp.active >= 0 && tp.active < len(tp.tabs) {
 		active := tp.tabs[tp.active]
+		// A tab's window being "active" also gates whether it draws its
+		// own cursor (see TermWindow.Display), and the panel staying
+		// visible while some other region has focus (e.g. the user
+		// switched back to the editor without closing the panel) is the
+		// common case, not an edge case - so this must also check
+		// FocusedRegion, not just which tab is selected within the
+		// panel, or the terminal keeps repositioning a real cursor
+		// against whatever the actually focused region draws for as
+		// long as the panel stays open.
+		focused := FocusedRegion == RegionTermPanel
 		for i, t := range tp.tabs {
 			if t.win != nil {
-				t.win.SetActive(i == tp.active)
+				t.win.SetActive(focused && i == tp.active)
 			}
 		}
 		if active.win != nil {

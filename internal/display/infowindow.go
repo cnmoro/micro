@@ -150,7 +150,7 @@ func (i *InfoWindow) displayBuffer() {
 		blocX++
 		line = line[size:]
 
-		if activeC.X == curBX {
+		if i.HasPrompt && activeC.X == curBX {
 			screen.ShowCursor(curVX, i.Y)
 		}
 		totalwidth += width
@@ -158,7 +158,7 @@ func (i *InfoWindow) displayBuffer() {
 			break
 		}
 	}
-	if activeC.X == blocX {
+	if i.HasPrompt && activeC.X == blocX {
 		screen.ShowCursor(vlocX, i.Y)
 	}
 }

@@ -31,9 +31,27 @@ var FocusedRegion Region = RegionEditor
 // is leaving can end up stuck with nothing left to clean it up or draw a
 // new one.
 func setFocusedRegion(r Region) {
-	if r != FocusedRegion {
-		screen.ResetCursor()
+	if r == FocusedRegion {
+		return
 	}
+	screen.ResetCursor()
+
+	// BufWindow.active (which gates whether the editor draws its own
+	// cursor at all) had no other tie to FocusedRegion - nothing else
+	// ever called BufPane.SetActive(false) for a region change, so the
+	// editor kept calling screen.ShowCursor with its own position every
+	// frame right alongside whatever the newly focused region (e.g. the
+	// terminal panel) was also drawing. At the call rates -debug's
+	// NoteRate showed for a connected SSH session (100+/s), two regions
+	// repositioning a *real* terminal cursor against each other that
+	// often is a very plausible way for it to end up effectively
+	// invisible - unlike the fake cursor, there's no "last write wins"
+	// visual result, just a cursor that never settles anywhere long
+	// enough to be seen.
+	if bp := MainTab().CurPane(); bp != nil {
+		bp.SetActive(r == RegionEditor)
+	}
+
 	FocusedRegion = r
 }
 
