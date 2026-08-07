@@ -382,6 +382,17 @@ func (g *GitView) openDiff(idx int) {
 	rightBuf := buffer.NewBufferFromString(working, path.Join("diff-"+seq, "working-tree", f.Path), btDiffView)
 	rightBuf.SetName(f.Path + " (working tree, " + git.StatusName(f.Code) + ")")
 
+	// Highlight which lines actually changed, reusing the same
+	// diffBase/diffgutter mechanism micro's own gutter git-diff markers
+	// use elsewhere (see diff-added/diff-modified/diff-deleted in
+	// bufwindow.go) - diffing the working-tree buffer against the HEAD
+	// content just displayed on the left. diffgutter defaults to off
+	// globally, so force it on for just this buffer rather than depending
+	// on the user's own settings.
+	rightBuf.Settings["diffgutter"] = true
+	rightBuf.SetDiffBase([]byte(head))
+	rightBuf.UpdateDiff()
+
 	w, h := screen.Screen.Size()
 	iOffset := config.GetInfoBarOffset()
 	tp := NewTabFromBuffer(0, 0, w, h-iOffset, leftBuf)
