@@ -124,6 +124,7 @@ func (t *Terminal) parseLoop(Term *terminal.VT) {
 			screen.Redraw()
 			break
 		}
+		screen.NoteRate("terminal-parseLoop-redraw")
 		screen.Redraw()
 	}
 	t.Stop()

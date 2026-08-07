@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/micro-editor/micro/v2/internal/config"
 	"github.com/micro-editor/tcell/v2"
@@ -17,6 +18,39 @@ import (
 // screen. TODO: maybe we should worry about polling and drawing at the
 // same time too.
 var Screen tcell.Screen
+
+// rateCounters/rateLock back NoteRate - see its doc comment.
+var (
+	rateLock     sync.Mutex
+	rateCounters = map[string]int{}
+	rateWindowAt = map[string]time.Time{}
+)
+
+// NoteRate is a temporary diagnostic hook (added to chase the "cursor
+// disappears after SSH, fake cursor flickers" report - remove once that's
+// root-caused) that counts calls tagged with name and, under -debug, logs
+// a "calls in the last second" rate at most once per second per tag - so
+// running with -debug and reproducing the issue for a few seconds gives a
+// readable call-frequency log instead of either silence or an
+// unbounded-size per-call log.
+func NoteRate(name string) {
+	rateLock.Lock()
+	defer rateLock.Unlock()
+	rateCounters[name]++
+	last, ok := rateWindowAt[name]
+	now := time.Now()
+	if ok && now.Sub(last) < time.Second {
+		return
+	}
+	count := rateCounters[name]
+	rateCounters[name] = 0
+	rateWindowAt[name] = now
+	elapsed := time.Second
+	if ok {
+		elapsed = now.Sub(last)
+	}
+	log.Printf("NoteRate %s: %d calls in %v (%.1f/s)", name, count, elapsed, float64(count)/elapsed.Seconds())
+}
 
 // Events is the channel of tcell events
 var Events chan (tcell.Event)
@@ -78,6 +112,7 @@ var lastCursor = screenCell{x: -1, y: -1}
 // This keeps track of the most recent fake cursor location and resets it when
 // a new fake cursor location is specified
 func ShowFakeCursor(x, y int) {
+	NoteRate("ShowFakeCursor")
 	r, combc, style, _ := Screen.GetContent(x, y)
 	if lastCursor.x >= 0 && lastCursor.y >= 0 {
 		Screen.SetContent(lastCursor.x, lastCursor.y, lastCursor.r, lastCursor.combc, lastCursor.style)
@@ -142,6 +177,7 @@ func ShowCursor(x, y int) {
 	if UseFake() {
 		ShowFakeCursor(x, y)
 	} else {
+		NoteRate("Screen.ShowCursor-real")
 		Screen.ShowCursor(x, y)
 	}
 }

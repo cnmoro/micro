@@ -531,6 +531,7 @@ func DoEvent() {
 	var event tcell.Event
 
 	// Display everything
+	screen.NoteRate("DoEvent-frame")
 	screen.Screen.Fill(' ', config.DefStyle)
 	screen.Screen.HideCursor()
 	action.Tabs.Display()
