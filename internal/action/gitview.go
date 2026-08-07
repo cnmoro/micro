@@ -404,6 +404,12 @@ func (g *GitView) openDiff(idx int) {
 		bp.VSplitIndex(rightBuf, true)
 	}
 	FocusedRegion = RegionEditor
+
+	// Opening another file from the Explorer while this tab is active
+	// collapses it automatically, but there's no other visible way to
+	// dismiss it (this is a plain tab, and micro's tab bar has no close
+	// button) - so say so explicitly, once, right when it'd matter.
+	InfoBar.Message("Diff view opened - Ctrl-q closes it, or open another file to replace it")
 }
 
 // ToggleGit toggles the Git view in the sidebar (Alt-6).

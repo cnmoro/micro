@@ -14,8 +14,13 @@ import (
 	"time"
 )
 
-const cmdTimeout = 8 * time.Second
-const remoteCmdTimeout = 20 * time.Second
+// A busy daemon with many containers/images can take a while to answer
+// `docker ps -a --format json` and friends - especially over SSH, where
+// the round trip stacks on top of the query itself - so these are
+// deliberately generous rather than the ~8s that's plenty for a handful
+// of local containers but too tight for 50+ on a loaded remote host.
+const cmdTimeout = 15 * time.Second
+const remoteCmdTimeout = 40 * time.Second
 
 // Container is a row from `docker ps -a`.
 type Container struct {
@@ -106,11 +111,7 @@ func runLocal(args ...string) ([]byte, error) {
 	cmd.Stderr = &errOut
 	err := cmd.Run()
 	if err != nil {
-		msg := strings.TrimSpace(errOut.String())
-		if msg == "" {
-			msg = err.Error()
-		}
-		return out.Bytes(), &CmdError{Args: args, Msg: msg}
+		return out.Bytes(), &CmdError{Args: args, Msg: errMsg(ctx, err, out.Bytes(), errOut.Bytes())}
 	}
 	return out.Bytes(), nil
 }
@@ -124,13 +125,29 @@ func runRemote(args ...string) ([]byte, error) {
 	cmd.Stderr = &errOut
 	err := cmd.Run()
 	if err != nil {
-		msg := strings.TrimSpace(errOut.String())
-		if msg == "" {
-			msg = err.Error()
-		}
-		return out.Bytes(), &CmdError{Args: args, Msg: msg}
+		return out.Bytes(), &CmdError{Args: args, Msg: errMsg(ctx, err, out.Bytes(), errOut.Bytes())}
 	}
 	return out.Bytes(), nil
+}
+
+// errMsg turns a failed command's raw error/output into a readable message.
+// A killed-on-timeout process can exit with no stderr at all - and on
+// Windows specifically, exec reports that as the generic "exit status 1"
+// rather than a Unix-style "signal: killed", which reads exactly like an
+// ordinary command failure with no clue that it was actually a timeout -
+// so that case is called out explicitly rather than left to look the same
+// as every other exit-status-1 failure.
+func errMsg(ctx context.Context, err error, stdout, stderr []byte) string {
+	if ctx.Err() == context.DeadlineExceeded {
+		return "docker command timed out"
+	}
+	if msg := strings.TrimSpace(string(stderr)); msg != "" {
+		return msg
+	}
+	if msg := strings.TrimSpace(string(stdout)); msg != "" {
+		return msg
+	}
+	return err.Error()
 }
 
 // remoteScript builds a single POSIX shell command line (name plus quoted

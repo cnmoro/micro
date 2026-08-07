@@ -764,6 +764,18 @@ func switchToFileBuffer(b *buffer.Buffer) {
 	bp := MainTab().CurPane()
 	if bp != nil {
 		if MainTab().IsDiffView {
+			// Unsplit only drops the pane from the split tree - it never
+			// closes the buffer that pane was showing, and neither does
+			// the SwitchBuffer FileTabs.Open below does to the survivor.
+			// Left alone, both of the diff view's scratch buffers (one
+			// with a live diffBase/async diff-update timer wired up)
+			// leak forever in buffer.OpenBuffers. Close them explicitly
+			// before tearing down the split.
+			for _, p := range MainTab().Panes {
+				if diffPane, ok := p.(*BufPane); ok {
+					diffPane.Buf.Close()
+				}
+			}
 			bp.Unsplit()
 			MainTab().IsDiffView = false
 			bp = MainTab().CurPane()
