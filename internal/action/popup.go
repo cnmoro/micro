@@ -17,11 +17,22 @@ type PopupItem struct {
 // at a time; while active it captures all input (see RouteEvent), the
 // same way an InfoBar prompt does.
 type PopupMenu struct {
-	title string
-	items []PopupItem
-	sel   int
+	title  string
+	items  []PopupItem
+	sel    int
+	scroll int
 
 	x, y, w, h int
+}
+
+// visibleRows is how many item rows fit inside the popup's border (the
+// same bound Display's item loop respects).
+func (p *PopupMenu) visibleRows() int {
+	n := p.h - 2
+	if n < 0 {
+		n = 0
+	}
+	return n
 }
 
 // activePopup is the currently displayed popup menu, or nil.
@@ -82,6 +93,36 @@ func (p *PopupMenu) clamp() {
 	if p.sel >= len(p.items) {
 		p.sel = 0
 	}
+	p.scrollToSelected()
+}
+
+// scrollToSelected snaps the viewport so the selected item is visible -
+// called whenever sel changes via the keyboard, mirroring the
+// select-then-follow pattern used by the Explorer/Docker/Git sidebar views.
+func (p *PopupMenu) scrollToSelected() {
+	rows := p.visibleRows()
+	if p.sel < p.scroll {
+		p.scroll = p.sel
+	}
+	if p.sel >= p.scroll+rows {
+		p.scroll = p.sel - rows + 1
+	}
+	p.clampScroll()
+}
+
+// clampScroll keeps scroll within range for the current item count/height,
+// independent of where sel is - what mouse-wheel scrolling adjusts.
+func (p *PopupMenu) clampScroll() {
+	max := len(p.items) - p.visibleRows()
+	if max < 0 {
+		max = 0
+	}
+	if p.scroll > max {
+		p.scroll = max
+	}
+	if p.scroll < 0 {
+		p.scroll = 0
+	}
 }
 
 // Display draws the popup as a bordered box over whatever else was drawn
@@ -126,25 +167,39 @@ func (p *PopupMenu) Display() {
 	}
 
 	// items
-	for i, it := range p.items {
-		row := 1 + i
-		if row >= p.h-1 {
-			break
+	p.clampScroll()
+	rows := p.visibleRows()
+	for row := 0; row < rows; row++ {
+		idx := p.scroll + row
+		if idx < 0 || idx >= len(p.items) {
+			continue
 		}
+		it := p.items[idx]
+
 		st := style
-		if i == p.sel {
+		if idx == p.sel {
 			st = selStyle
 		}
 		for col := 1; col < p.w-1; col++ {
-			screen.SetContent(p.x+col, p.y+row, ' ', nil, st)
+			screen.SetContent(p.x+col, p.y+1+row, ' ', nil, st)
 		}
 		label := " " + it.Label
 		for i2, r := range []rune(label) {
 			if 1+i2 >= p.w-1 {
 				break
 			}
-			screen.SetContent(p.x+1+i2, p.y+row, r, nil, st)
+			screen.SetContent(p.x+1+i2, p.y+1+row, r, nil, st)
 		}
+	}
+
+	// scroll indicators in the border corners, when there's more content
+	// off-screen in that direction - the only hint a fixed-size popup with
+	// no visible scrollbar track can give that scrolling is possible.
+	if p.scroll > 0 {
+		screen.SetContent(p.x+p.w-2, p.y, '▲', nil, titleStyle)
+	}
+	if p.scroll+rows < len(p.items) {
+		screen.SetContent(p.x+p.w-2, p.y+p.h-1, '▼', nil, titleStyle)
 	}
 }
 
@@ -168,7 +223,17 @@ func (p *PopupMenu) HandleEvent(event tcell.Event) {
 			ClosePopup()
 		}
 	case *tcell.EventMouse:
-		if e.Buttons() != tcell.Button1 {
+		switch e.Buttons() {
+		case tcell.WheelUp:
+			p.scroll -= 1
+			p.clampScroll()
+			return
+		case tcell.WheelDown:
+			p.scroll += 1
+			p.clampScroll()
+			return
+		case tcell.Button1:
+		default:
 			return
 		}
 		mx, my := e.Position()
@@ -176,7 +241,7 @@ func (p *PopupMenu) HandleEvent(event tcell.Event) {
 		if lx <= 0 || lx >= p.w-1 {
 			return
 		}
-		idx := ly - 1
+		idx := p.scroll + ly - 1
 		if idx < 0 || idx >= len(p.items) {
 			return
 		}
