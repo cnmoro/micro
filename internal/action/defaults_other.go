@@ -116,6 +116,9 @@ var bufdefaults = map[string]string{
 	"Alt-5":      "OpenFolder",
 	"CtrlShift5": "OpenFolder",
 	"F9":         "OpenFolder",
+	"Alt-6":      "ToggleGit",
+	"CtrlShift6": "ToggleGit",
+	"F11":        "ToggleGit",
 
 	// Mouse bindings
 	"MouseWheelUp":     "ScrollUp",

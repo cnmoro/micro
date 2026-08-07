@@ -1,13 +1,15 @@
-# Explorer, Docker and the terminal panel
+# Explorer, Docker, Git and the terminal panel
 
-Micro has three built-in IDE-style panels: a file **Explorer**, a **Docker**
-management view (sharing the left sidebar with Explorer), and a bottom
-**terminal panel** supporting multiple named terminal tabs. All three are
-fully usable with the mouse as well as the keyboard.
+Micro has four built-in IDE-style panels: a file **Explorer**, a **Docker**
+management view and a **Git** status view (all three sharing the left
+sidebar), and a bottom **terminal panel** supporting multiple named terminal
+tabs. All of them are fully usable with the mouse as well as the keyboard.
 
 The Explorer and Docker view both work against a remote machine over SSH
 too - see `> help ssh`. When connected, their titles show `(target)` so
-it's always clear whether you're looking at local or remote state.
+it's always clear whether you're looking at local or remote state. The Git
+view always shows the local repository in micro's current working
+directory, regardless of any active SSH session.
 
 ## Recently viewed files
 
@@ -30,6 +32,7 @@ terminal supports with zero configuration), type the command, press
 
 * `> explorer` - toggle the Explorer (left sidebar)
 * `> docker` - toggle the Docker view (left sidebar)
+* `> git` - toggle the Git view (left sidebar)
 * `> termpanel` - toggle the terminal panel (bottom)
 * `> ssh` - open the SSH connect/disconnect wizard (see `> help ssh`)
 * `> openfolder` - change the working directory / open a local folder
@@ -45,6 +48,7 @@ terminal:
 | Terminal     | `Alt-3`   | `Ctrl-Shift-3` | `F6`  |
 | SSH wizard   | `Alt-4`   | `Ctrl-Shift-4` | `F8`  |
 | Open folder  | `Alt-5`   | `Ctrl-Shift-5` | `F9`  |
+| Git          | `Alt-6`   | `Ctrl-Shift-6` | `F11` |
 
 None of the three is reliable in every terminal, which is why all three
 exist rather than just one:
@@ -65,9 +69,9 @@ exist rather than just one:
 If none of the three keybindings do anything for you, the `Ctrl-e` +
 command path above always works.
 
-The left sidebar has a small activity strip on its far left edge (an `E` and
-a `D`) that you can click to switch between the Explorer and Docker views,
-VS Code-style.
+The left sidebar has a small activity strip on its far left edge (an `E`, a
+`D` and a `G`) that you can click to switch between the Explorer, Docker and
+Git views, VS Code-style.
 
 Both the sidebar and the terminal panel can be resized by dragging: click
 and drag the sidebar's right border, or click and drag an empty area of the
@@ -130,6 +134,34 @@ message explaining why it's unavailable.
 * With an image/network/volume selected: `d` removes it, `i` inspects it
 * With a category selected: `p` prunes that category (stopped containers,
   dangling images, unused networks, unused volumes)
+
+## Git
+
+The Git view lists every changed file (staged, unstaged, or untracked) in
+the git repository rooted at micro's current working directory, each
+prefixed with a colored status letter:
+
+| Letter | Meaning    |
+|--------|------------|
+| `A`    | Added      |
+| `M`    | Modified   |
+| `D`    | Deleted    |
+| `R`    | Renamed    |
+| `C`    | Copied     |
+| `U`    | Untracked  |
+| `!`    | Conflict (unmerged) |
+
+If the working directory isn't inside a git repository at all (no `.git`
+found), the panel just says so instead of an empty list.
+
+* Click a file, or select it and press `Enter`, to open a **side-by-side
+  diff**: a new tab, split into the file's content as of `HEAD` on the left
+  and its current working-tree content on the right. Both sides are
+  read-only scratch buffers - edit the real file (`o` below, or the
+  Explorer) if you want to make changes.
+* `o`: open the selected file directly in the editor instead of the diff
+* `Up`/`Down`/`j`/`k`: move the selection
+* `r`: refresh
 
 ## Terminal panel
 

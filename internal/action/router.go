@@ -142,11 +142,12 @@ func ResetRouterMouse() {
 // `explorer`/`docker`/`termpanel`/`ssh`/`openfolder` and Enter always
 // works regardless of what any of these keybindings do.
 var fkeyToggle = map[tcell.Key]rune{
-	tcell.KeyF1: '1',
-	tcell.KeyF5: '2',
-	tcell.KeyF6: '3',
-	tcell.KeyF8: '4',
-	tcell.KeyF9: '5',
+	tcell.KeyF1:  '1',
+	tcell.KeyF5:  '2',
+	tcell.KeyF6:  '3',
+	tcell.KeyF8:  '4',
+	tcell.KeyF9:  '5',
+	tcell.KeyF11: '6',
 }
 
 // shiftedDigit maps the US-layout shifted glyph of each digit to the
@@ -154,7 +155,7 @@ var fkeyToggle = map[tcell.Key]rune{
 // plus the already-shifted symbol rather than as a separate Shift
 // modifier bit alongside the bare digit.
 var shiftedDigit = map[rune]rune{
-	'!': '1', '@': '2', '#': '3', '$': '4', '%': '5',
+	'!': '1', '@': '2', '#': '3', '$': '4', '%': '5', '^': '6',
 }
 
 func handleGlobalToggle(e *tcell.EventKey) bool {
@@ -191,6 +192,9 @@ func handleGlobalToggle(e *tcell.EventKey) bool {
 		return true
 	case '5':
 		openWorkDirWizard()
+		return true
+	case '6':
+		Sidebar.Toggle(SidebarGitView)
 		return true
 	}
 	return false

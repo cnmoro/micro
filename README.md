@@ -56,6 +56,12 @@ of it is fully mouse-driven as well as keyboard-driven.
 - **Open Folder** (`Alt-5`) - VS Code's "Open Folder": prompts for a directory
   (Tab-completes, prefilled with the current one) and switches micro's working directory
   and Explorer root to it.
+- **Git panel** (`Alt-6`, shares the sidebar with Explorer/Docker) - every changed file in
+  the git repository at micro's working directory, colored by status (`A`dded,
+  `M`odified, `D`eleted, `R`enamed, `C`opied, `U`ntracked, `!` conflict).
+  - Click a file (or select it and press `Enter`) for a side-by-side `HEAD`-vs-working-tree
+    diff in a new split tab.
+  - `o` opens the file directly in the editor instead; `r` refreshes.
 - **Recently-viewed file tabs** - every file you open (Explorer, `Ctrl-o`, `> open`) gets
   a closable tab above the editor. Switching tabs never re-reads the file from disk or
   loses your place - each tab keeps its own buffer alive, cursor position and all, even
@@ -63,7 +69,7 @@ of it is fully mouse-driven as well as keyboard-driven.
 
 ### New hotkeys at a glance
 
-The reliable one: `Ctrl-e` (command mode) then `explorer` / `docker` / `termpanel` /
+The reliable one: `Ctrl-e` (command mode) then `explorer` / `docker` / `git` / `termpanel` /
 `ssh` / `openfolder` + Enter - works in every terminal, no configuration needed.
 
 For a single keystroke, each panel also has three interchangeable bindings - use
@@ -76,6 +82,7 @@ whichever one actually reaches micro in your terminal:
 | `Alt-3` / `Ctrl-Shift-3` / `F6`   | Toggle the terminal panel                  |
 | `Alt-4` / `Ctrl-Shift-4` / `F8`   | Open the SSH connect/disconnect wizard     |
 | `Alt-5` / `Ctrl-Shift-5` / `F9`   | Change working directory / open a folder   |
+| `Alt-6` / `Ctrl-Shift-6` / `F11`  | Toggle the Git view                        |
 
 No single one of the three works in every terminal: Alt (Option on macOS) needs
 "Use Option as Meta Key" enabled in your terminal's settings or it just types an

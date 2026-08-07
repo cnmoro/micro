@@ -15,6 +15,7 @@ type SidebarViewKind int
 const (
 	SidebarExplorerView SidebarViewKind = iota
 	SidebarDockerView
+	SidebarGitView
 )
 
 // activityStripWidth is the width, in columns, of the VSCode-style icon
@@ -49,6 +50,7 @@ type SidebarPane struct {
 
 	explorer *Explorer
 	docker   *DockerView
+	git      *GitView
 
 	mousePressed bool
 	widthCols    int
@@ -78,6 +80,7 @@ func InitSidebar() {
 	s.active = SidebarExplorerView
 	s.explorer = NewExplorer()
 	s.docker = NewDockerView()
+	s.git = NewGitView()
 	Sidebar = s
 }
 
@@ -139,10 +142,14 @@ func (s *SidebarPane) Toggle(kind SidebarViewKind) {
 }
 
 func (s *SidebarPane) content() SidebarContent {
-	if s.active == SidebarDockerView {
+	switch s.active {
+	case SidebarDockerView:
 		return s.docker
+	case SidebarGitView:
+		return s.git
+	default:
+		return s.explorer
 	}
-	return s.explorer
 }
 
 // Resize sets the sidebar's absolute geometry. Called from TabList.Resize.
@@ -180,15 +187,19 @@ func (s *SidebarPane) Display() {
 	}
 
 	// Activity strip
-	explorerStyle, dockerStyle := dividerStyle, dividerStyle
-	if s.active == SidebarExplorerView {
+	explorerStyle, dockerStyle, gitStyle := dividerStyle, dividerStyle, dividerStyle
+	switch s.active {
+	case SidebarExplorerView:
 		explorerStyle = activeStyle
-	} else {
+	case SidebarDockerView:
 		dockerStyle = activeStyle
+	case SidebarGitView:
+		gitStyle = activeStyle
 	}
 	screen.SetContent(s.X, s.Y, 'E', nil, explorerStyle)
 	screen.SetContent(s.X, s.Y+1, 'D', nil, dockerStyle)
-	for y := 2; y < s.Height; y++ {
+	screen.SetContent(s.X, s.Y+2, 'G', nil, gitStyle)
+	for y := 3; y < s.Height; y++ {
 		screen.SetContent(s.X, s.Y+y, ' ', nil, dividerStyle)
 	}
 
@@ -260,10 +271,13 @@ func (s *SidebarPane) HandleEvent(event tcell.Event) {
 				return
 			}
 			if lx < activityStripWidth {
-				if ly == 0 {
+				switch ly {
+				case 0:
 					s.Show(SidebarExplorerView)
-				} else if ly == 1 {
+				case 1:
 					s.Show(SidebarDockerView)
+				case 2:
+					s.Show(SidebarGitView)
 				}
 				return
 			}
@@ -314,3 +328,6 @@ func (h *BufPane) ExplorerCmd(args []string) {
 func (h *BufPane) DockerCmd(args []string) {
 	h.ToggleDocker()
 }
+
+// ToggleGit and GitCmd (the `git` command) live in gitview.go, alongside
+// GitView itself.

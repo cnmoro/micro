@@ -71,6 +71,7 @@ func changeWorkDir(path string) {
 		disconnectAllRemote()
 	}
 	Sidebar.explorer.SetLocal()
+	Sidebar.git.Invalidate()
 	Sidebar.Show(SidebarExplorerView)
 	InfoBar.Message("Working directory: " + abs)
 }

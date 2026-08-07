@@ -69,6 +69,7 @@ func InitCommands() {
 		"textfilter":  {(*BufPane).TextFilterCmd, nil},
 		"explorer":    {(*BufPane).ExplorerCmd, nil},
 		"docker":      {(*BufPane).DockerCmd, nil},
+		"git":         {(*BufPane).GitCmd, nil},
 		"termpanel":   {(*BufPane).TermPanelCmd, nil},
 		"ssh":         {(*BufPane).SSHCmd, SSHComplete},
 		"openfolder":  {(*BufPane).OpenFolderCmd, buffer.FileComplete},
