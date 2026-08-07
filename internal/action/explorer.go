@@ -763,6 +763,11 @@ func openFileInEditor(path string) {
 func switchToFileBuffer(b *buffer.Buffer) {
 	bp := MainTab().CurPane()
 	if bp != nil {
+		if MainTab().IsDiffView {
+			bp.Unsplit()
+			MainTab().IsDiffView = false
+			bp = MainTab().CurPane()
+		}
 		FileTabs.Open(bp, b)
 	} else {
 		w, h := screen.Screen.Size()

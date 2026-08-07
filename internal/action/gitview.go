@@ -5,6 +5,7 @@ import (
 	"path"
 	"path/filepath"
 	"sort"
+	"strconv"
 
 	"github.com/micro-editor/micro/v2/internal/buffer"
 	"github.com/micro-editor/micro/v2/internal/config"
@@ -14,6 +15,20 @@ import (
 	"github.com/micro-editor/micro/v2/internal/shell"
 	"github.com/micro-editor/tcell/v2"
 )
+
+// btDiffView is like buffer.BTScratch (can't be saved) but with syntax
+// highlighting turned on - filetype detection matches on a buffer's Path,
+// so the diff view's buffers keep the file's real extension in Path (a
+// synthetic, made-unique-per-open directory prefix ahead of it, so two
+// diff buffers for the same file don't collide as "the same buffer" -
+// see openDiff) and use SetName for the human-readable tab label instead.
+var btDiffView = buffer.BufType{Kind: 7, Readonly: true, Scratch: true, Syntax: true}
+
+// diffViewSeq makes each openDiff call's buffer paths unique so opening a
+// diff for the same file twice never resolves to an already-open buffer
+// (buffer.NewBuffer dedupes same-Path buffers by design) and shows a stale
+// first look instead of the fresh content just read.
+var diffViewSeq int
 
 // GitView is the git-status sidebar view: every changed file in the current
 // repository - the local working directory, or (while an SSH session is
@@ -359,15 +374,18 @@ func (g *GitView) openDiff(idx int) {
 		return
 	}
 
-	leftName := f.Path + " (HEAD)"
-	rightName := f.Path + " (working tree, " + git.StatusName(f.Code) + ")"
+	diffViewSeq++
+	seq := strconv.Itoa(diffViewSeq)
 
-	leftBuf := buffer.NewBufferFromString(head, leftName, buffer.BTScratch)
-	rightBuf := buffer.NewBufferFromString(working, rightName, buffer.BTScratch)
+	leftBuf := buffer.NewBufferFromString(head, path.Join("diff-"+seq, "HEAD", f.Path), btDiffView)
+	leftBuf.SetName(f.Path + " (HEAD)")
+	rightBuf := buffer.NewBufferFromString(working, path.Join("diff-"+seq, "working-tree", f.Path), btDiffView)
+	rightBuf.SetName(f.Path + " (working tree, " + git.StatusName(f.Code) + ")")
 
 	w, h := screen.Screen.Size()
 	iOffset := config.GetInfoBarOffset()
 	tp := NewTabFromBuffer(0, 0, w, h-iOffset, leftBuf)
+	tp.IsDiffView = true
 	Tabs.AddTab(tp)
 	Tabs.SetActive(len(Tabs.List) - 1)
 

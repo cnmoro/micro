@@ -329,6 +329,12 @@ type Tab struct {
 	resizing *views.Node // node currently being resized
 	// captures whether the mouse is released
 	release bool
+
+	// IsDiffView marks a tab created by the Git panel's side-by-side diff
+	// (see GitView.openDiff) - opening a file elsewhere (e.g. the Explorer)
+	// into this tab collapses the split back to a single pane first,
+	// instead of leaving the diff's other half stuck on screen.
+	IsDiffView bool
 }
 
 // NewTabFromBuffer creates a new tab from the given buffer

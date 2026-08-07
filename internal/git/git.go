@@ -29,9 +29,14 @@ type FileStatus struct {
 }
 
 // run executes `git <args...>` rooted at dir, either locally or (if host is
-// non-empty) over ssh, returning trimmed stdout/stderr separately so
-// callers can tell "ran fine" apart from "ran, but with an empty result"
-// and still get at the failure reason on error.
+// non-empty) over ssh. stdout is returned exactly as git produced it (only
+// stderr is trimmed, for a clean single-line error message) - callers that
+// want a single trimmed value (IsRepo, RepoRoot, Branch) trim it
+// themselves; Status must not, since git status --porcelain's leading
+// column is meaningful whitespace (trimming it off the first line, if that
+// line happens to start with a space, silently eats the first character of
+// that line's path instead - a real bug this comment exists to prevent
+// reintroducing).
 func run(host, dir string, args ...string) (string, string, error) {
 	timeout := cmdTimeout
 	var cmd *exec.Cmd
@@ -53,7 +58,7 @@ func run(host, dir string, args ...string) (string, string, error) {
 	cmd.Stdout = &out
 	cmd.Stderr = &errOut
 	err := cmd.Run()
-	stdout, stderr := strings.TrimSpace(out.String()), strings.TrimSpace(errOut.String())
+	stdout, stderr := out.String(), strings.TrimSpace(errOut.String())
 	if err != nil {
 		if stderr == "" {
 			stderr = err.Error()
@@ -87,7 +92,7 @@ func IsRepo(host, dir string) (bool, string) {
 	if err != nil {
 		return false, errOut
 	}
-	return out == "true", ""
+	return strings.TrimSpace(out) == "true", ""
 }
 
 // RepoRoot returns the top-level directory of the repository dir is inside.
@@ -96,17 +101,19 @@ func RepoRoot(host, dir string) (string, error) {
 	if err != nil {
 		return "", &CmdError{errOut}
 	}
-	return out, nil
+	return strings.TrimSpace(out), nil
 }
 
 // Branch returns the current branch name, or a short description of a
 // detached HEAD if not on a branch.
 func Branch(host, dir string) string {
-	if out, _, err := run(host, dir, "branch", "--show-current"); err == nil && out != "" {
-		return out
+	if out, _, err := run(host, dir, "branch", "--show-current"); err == nil {
+		if b := strings.TrimSpace(out); b != "" {
+			return b
+		}
 	}
 	if out, _, err := run(host, dir, "rev-parse", "--short", "HEAD"); err == nil {
-		return "detached@" + out
+		return "detached@" + strings.TrimSpace(out)
 	}
 	return ""
 }
@@ -118,6 +125,10 @@ func Status(host, dir string) ([]FileStatus, error) {
 	if err != nil {
 		return nil, &CmdError{errOut}
 	}
+	// Only strip the trailing newline git always appends - not leading
+	// whitespace, which (unlike here) is meaningful data on every other
+	// line (see the comment on run).
+	out = strings.TrimRight(out, "\n")
 	if out == "" {
 		return nil, nil
 	}
@@ -191,6 +202,9 @@ func Show(host, repoRoot, relPath string) (string, error) {
 	if err != nil {
 		return "", nil
 	}
+	// Deliberately not trimmed - this is the file's exact stored content,
+	// and trimming would silently misrepresent leading/trailing blank
+	// lines in the diff view.
 	return out, nil
 }
 
