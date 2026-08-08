@@ -12,6 +12,8 @@ package git
 import (
 	"context"
 	"os/exec"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -19,13 +21,15 @@ import (
 const cmdTimeout = 8 * time.Second
 const remoteCmdTimeout = 20 * time.Second
 
-// FileStatus is a single changed file as reported by `git status`.
+// FileStatus is a single changed file as reported by `git status`, with its
+// staged (index-vs-HEAD) and unstaged (worktree-vs-index) status tracked
+// independently, since git allows a file to be both at once (some hunks
+// staged, others not) - StagedCode/UnstagedCode are 0 when that side has
+// no change, so a caller can tell "not staged" apart from "staged clean".
 type FileStatus struct {
-	Path string
-	Code byte // 'A', 'M', 'D', 'R', 'C', 'U' (untracked), '!' (conflict)
-	// Staged reports whether the change is staged (index) rather than
-	// only in the working tree - the same "M" can be either.
-	Staged bool
+	Path         string
+	StagedCode   byte // 'A', 'M', 'D', 'R', 'C', '!' (conflict), or 0
+	UnstagedCode byte // 'M', 'D', 'U' (untracked), '!' (conflict), or 0
 }
 
 // run executes `git <args...>` rooted at dir, either locally or (if host is
@@ -146,31 +150,47 @@ func Status(host, dir string) ([]FileStatus, error) {
 			path = path[idx+4:]
 		}
 		result = append(result, FileStatus{
-			Path:   path,
-			Code:   classify(x, y),
-			Staged: x != ' ' && x != '?',
+			Path:         path,
+			StagedCode:   classifyStaged(x, y),
+			UnstagedCode: classifyUnstaged(x, y),
 		})
 	}
 	return result, nil
 }
 
-func classify(x, y byte) byte {
-	switch {
-	case x == '?' && y == '?':
-		return 'U'
-	case x == 'U' || y == 'U' || (x == 'A' && y == 'A') || (x == 'D' && y == 'D'):
-		return '!'
-	case x == 'A':
+func classifyStaged(x, y byte) byte {
+	if x == 'U' || y == 'U' || (x == 'A' && y == 'A') || (x == 'D' && y == 'D') {
+		return '!' // conflict - shown once, not split staged/unstaged
+	}
+	switch x {
+	case 'A':
 		return 'A'
-	case x == 'D' || y == 'D':
+	case 'D':
 		return 'D'
-	case x == 'R':
+	case 'R':
 		return 'R'
-	case x == 'C':
+	case 'C':
 		return 'C'
-	default:
+	case 'M':
 		return 'M'
 	}
+	return 0
+}
+
+func classifyUnstaged(x, y byte) byte {
+	if x == 'U' || y == 'U' || (x == 'A' && y == 'A') || (x == 'D' && y == 'D') {
+		return 0 // already reported as a conflict on the staged side
+	}
+	if x == '?' && y == '?' {
+		return 'U'
+	}
+	switch y {
+	case 'M':
+		return 'M'
+	case 'D':
+		return 'D'
+	}
+	return 0
 }
 
 // StatusName returns a human-readable label for a status code.
@@ -206,6 +226,138 @@ func Show(host, repoRoot, relPath string) (string, error) {
 	// and trimming would silently misrepresent leading/trailing blank
 	// lines in the diff view.
 	return out, nil
+}
+
+// Stage adds relPath's current working-tree content to the index (`git add
+// -- relPath`) - stages the whole file, including any untracked file.
+func Stage(host, repoRoot, relPath string) error {
+	_, errOut, err := run(host, repoRoot, "add", "--", relPath)
+	if err != nil {
+		return &CmdError{errOut}
+	}
+	return nil
+}
+
+// Unstage removes relPath's staged changes from the index without
+// touching the working tree (`git reset -- relPath`) - safe to call even
+// on a file that was never committed (reset with no commit-ish defaults
+// to HEAD, and unstaging a newly-added file just un-adds it).
+func Unstage(host, repoRoot, relPath string) error {
+	_, errOut, err := run(host, repoRoot, "reset", "--", relPath)
+	if err != nil {
+		return &CmdError{errOut}
+	}
+	return nil
+}
+
+// Commit commits the currently staged changes with the given message.
+func Commit(host, repoRoot, message string) error {
+	_, errOut, err := run(host, repoRoot, "commit", "-m", message)
+	if err != nil {
+		return &CmdError{errOut}
+	}
+	return nil
+}
+
+// DiffFile returns the unified diff of relPath's unstaged changes (index
+// vs. working tree) - the same diff `git apply --cached` needs a hunk
+// from to stage just that hunk.
+func DiffFile(host, repoRoot, relPath string) (string, error) {
+	out, errOut, err := run(host, repoRoot, "diff", "--", relPath)
+	if err != nil {
+		return "", &CmdError{errOut}
+	}
+	return out, nil
+}
+
+// StageHunkAtLine stages just the hunk of relPath's unstaged diff that
+// covers the given 1-indexed working-tree line number (e.g. where the
+// cursor is in the diff view's working-tree pane), by extracting that one
+// hunk from `git diff` and feeding it to `git apply --cached`. Returns
+// false (with a nil error) if no hunk covers that line - most likely the
+// line is unchanged, or the file's on-disk content has since diverged
+// from what's displayed.
+func StageHunkAtLine(host, repoRoot, relPath string, line int) (bool, error) {
+	diff, err := DiffFile(host, repoRoot, relPath)
+	if err != nil {
+		return false, err
+	}
+	patch, ok := extractHunkAtLine(diff, line)
+	if !ok {
+		return false, nil
+	}
+
+	timeout := cmdTimeout
+	var cmd *exec.Cmd
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	if host == "" {
+		cmd = exec.CommandContext(ctx, "git", "apply", "--cached", "-")
+		cmd.Dir = repoRoot
+	} else {
+		timeout = remoteCmdTimeout
+		ctx, cancel = context.WithTimeout(context.Background(), timeout)
+		defer cancel()
+		script := "cd " + shQuote(repoRoot) + " && " + remoteScript("git", "apply", "--cached", "-")
+		cmd = exec.CommandContext(ctx, "ssh", host, script)
+	}
+	cmd.Stdin = strings.NewReader(patch)
+	var errOut strings.Builder
+	cmd.Stderr = &errOut
+	if err := cmd.Run(); err != nil {
+		msg := strings.TrimSpace(errOut.String())
+		if msg == "" {
+			msg = err.Error()
+		}
+		return false, &CmdError{msg}
+	}
+	return true, nil
+}
+
+// hunkHeaderRe matches a unified diff hunk header, e.g.
+// "@@ -12,5 +14,7 @@ optional trailing context".
+var hunkHeaderRe = regexp.MustCompile(`^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@`)
+
+// extractHunkAtLine finds the hunk in diffText (a unified diff for a
+// single file, as `git diff` produces) whose new-file line range contains
+// line, and returns a standalone patch (the file header plus just that
+// hunk) suitable for `git apply`.
+func extractHunkAtLine(diffText string, line int) (string, bool) {
+	lines := strings.Split(diffText, "\n")
+
+	i := 0
+	for i < len(lines) && !strings.HasPrefix(lines[i], "@@") {
+		i++
+	}
+	header := strings.Join(lines[:i], "\n")
+
+	for i < len(lines) {
+		m := hunkHeaderRe.FindStringSubmatch(lines[i])
+		if m == nil {
+			i++
+			continue
+		}
+		newStart, _ := strconv.Atoi(m[1])
+		newCount := 1
+		if m[2] != "" {
+			newCount, _ = strconv.Atoi(m[2])
+		}
+
+		hunkStart := i
+		i++
+		for i < len(lines) && !strings.HasPrefix(lines[i], "@@") {
+			i++
+		}
+		// A pure-deletion hunk has newCount 0 (nothing added on the new
+		// side to place a cursor on) - newStart there is the line after
+		// which the deletion happened, so treat landing exactly on it as
+		// a match too, or such a hunk could never be targeted at all.
+		if (line >= newStart && line < newStart+newCount) || (newCount == 0 && line == newStart) {
+			hunk := strings.Join(lines[hunkStart:i], "\n")
+			return header + "\n" + hunk + "\n", true
+		}
+	}
+	return "", false
 }
 
 // CmdError wraps a failed git invocation with its stderr.

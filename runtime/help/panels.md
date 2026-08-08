@@ -142,10 +142,13 @@ message explaining why it's unavailable.
 
 ## Git
 
-The Git view lists every changed file (staged, unstaged, or untracked) in
-the git repository at micro's current working directory - or, while
-connected over SSH, at the remote session's current path - each prefixed
-with a colored status letter:
+The Git view is a VS Code-style source control panel for the git
+repository at micro's current working directory - or, while connected
+over SSH, at the remote session's current path. A small toolbar
+(`↻ Refresh`, `✓ Commit`) sits above two sections, **Staged Changes** and
+**Changes**, each listing files prefixed with a colored status letter. A
+file with both staged and unstaged changes (some hunks staged, others
+not) appears in both sections at once.
 
 | Letter | Meaning    |
 |--------|------------|
@@ -160,14 +163,23 @@ with a colored status letter:
 If the working directory isn't inside a git repository at all (no `.git`
 found), the panel just says so instead of an empty list.
 
-* Click a file, or select it and press `Enter`, to open a **side-by-side
-  diff**: a new tab, split into the file's content as of `HEAD` on the left
-  and its current working-tree content on the right. Both sides are
-  read-only scratch buffers - edit the real file (`o` below, or the
-  Explorer) if you want to make changes.
+* Every file has a `+`/`-` button at the right edge of its row - `+` stages
+  it (**Changes** section), `-` unstages it (**Staged Changes** section).
+  Click it, or select the row and press `s`/`u`, to toggle it.
+* Click a file (anywhere except its `+`/`-` button), or select it and press
+  `Enter`, to open a **side-by-side diff**: a new tab, split into the
+  file's content as of `HEAD` on the left and its current working-tree
+  content on the right. Both sides are read-only scratch buffers - edit
+  the real file (`o` below, or the Explorer) if you want to make changes.
+  * `Alt-s`, with the cursor on a changed line in the **working tree**
+    (right) pane, stages just that change block (hunk) - handy for
+    committing part of a file's changes without the rest.
+* `✓ Commit` (or `c`) prompts for a commit message and commits whatever is
+  currently staged.
 * `o`: open the selected file directly in the editor instead of the diff
-* `Up`/`Down`/`j`/`k`: move the selection
-* `r`: refresh
+* `Up`/`Down`/`j`/`k`: move the selection (section headers are skipped -
+  they're not actionable)
+* `↻ Refresh` (or `r`): refresh
 
 ## Terminal panel
 

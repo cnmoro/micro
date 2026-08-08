@@ -865,6 +865,7 @@ var BufKeyActions = map[string]BufKeyAction{
 	"ToggleExplorer":            (*BufPane).ToggleExplorer,
 	"ToggleDocker":              (*BufPane).ToggleDocker,
 	"ToggleGit":                 (*BufPane).ToggleGit,
+	"StageHunk":                 (*BufPane).StageHunk,
 	"ToggleTermPanel":           (*BufPane).ToggleTermPanel,
 	"ToggleSSH":                 (*BufPane).ToggleSSH,
 	"OpenFolder":                (*BufPane).OpenFolder,

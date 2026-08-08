@@ -61,13 +61,18 @@ of it is fully mouse-driven as well as keyboard-driven.
 - **Open Folder** (`Alt-5`) - VS Code's "Open Folder": prompts for a directory
   (Tab-completes, prefilled with the current one) and switches micro's working directory
   and Explorer root to it.
-- **Git panel** (`Alt-6`, shares the sidebar with Explorer/Docker) - every changed file in
-  the git repository at micro's working directory (or, over SSH, the remote session's
-  path), colored by status (`A`dded, `M`odified, `D`eleted, `R`enamed, `C`opied,
-  `U`ntracked, `!` conflict).
+- **Git panel** (`Alt-6`, shares the sidebar with Explorer/Docker) - a VS Code-style source
+  control view for the git repository at micro's working directory (or, over SSH, the
+  remote session's path): a toolbar (`↻ Refresh`, `✓ Commit`) above **Staged Changes** and
+  **Changes** sections, each file colored by status (`A`dded, `M`odified, `D`eleted,
+  `R`enamed, `C`opied, `U`ntracked, `!` conflict).
+  - Every file has a `+`/`-` button (or press `s`/`u`) to stage/unstage it; a partially
+    staged file appears in both sections at once.
   - Click a file (or select it and press `Enter`) for a side-by-side `HEAD`-vs-working-tree
-    diff in a new split tab.
-  - `o` opens the file directly in the editor instead; `r` refreshes.
+    diff in a new split tab - `Alt-s` there, with the cursor on a changed line in the
+    working-tree pane, stages just that hunk instead of the whole file.
+  - `✓ Commit` (or `c`) prompts for a message and commits whatever's staged.
+  - `o` opens the file directly in the editor instead; `↻ Refresh` (or `r`) refreshes.
   - Over SSH this runs `ssh <host> git ...` on the remote host, same as Docker above.
 - **Recently-viewed file tabs** - every file you open (Explorer, `Ctrl-o`, `> open`) gets
   a closable tab above the editor. Switching tabs never re-reads the file from disk or

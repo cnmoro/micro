@@ -121,6 +121,7 @@ var bufdefaults = map[string]string{
 	"Alt-6":      "ToggleGit",
 	"CtrlShift6": "ToggleGit",
 	"F11":        "ToggleGit",
+	"Alt-s":      "StageHunk",
 
 	// Mouse bindings
 	"MouseWheelUp":     "ScrollUp",
