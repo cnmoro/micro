@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/micro-editor/micro/v2/internal/remote"
 )
 
 // A busy daemon with many containers/images can take a while to answer
@@ -120,7 +122,8 @@ func runLocal(args ...string) ([]byte, error) {
 func runRemote(args ...string) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), remoteCmdTimeout)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "ssh", RemoteHost, remoteScript("docker", args...))
+	sshArgs := append(remote.MultiplexArgs(RemoteHost), RemoteHost, remoteScript("docker", args...))
+	cmd := exec.CommandContext(ctx, "ssh", sshArgs...)
 	var out, errOut bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &errOut
@@ -368,7 +371,8 @@ func FetchLogs(id string, tail int) (string, error) {
 		cmd = exec.CommandContext(ctx, "docker", args...)
 	} else {
 		ctx, cancel = context.WithTimeout(context.Background(), remoteCmdTimeout)
-		cmd = exec.CommandContext(ctx, "ssh", RemoteHost, remoteScript("docker", args...))
+		sshArgs := append(remote.MultiplexArgs(RemoteHost), RemoteHost, remoteScript("docker", args...))
+		cmd = exec.CommandContext(ctx, "ssh", sshArgs...)
 	}
 	defer cancel()
 
@@ -393,5 +397,6 @@ func terminalArgs(name string, args ...string) []string {
 	if RemoteHost == "" {
 		return append([]string{name}, args...)
 	}
-	return []string{"ssh", "-t", RemoteHost, remoteScript(name, args...)}
+	argv := append([]string{"ssh"}, remote.MultiplexArgs(RemoteHost)...)
+	return append(append(argv, "-t", RemoteHost), remoteScript(name, args...))
 }

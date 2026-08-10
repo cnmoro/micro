@@ -16,6 +16,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/micro-editor/micro/v2/internal/remote"
 )
 
 const cmdTimeout = 8 * time.Second
@@ -55,7 +57,8 @@ func run(host, dir string, args ...string) (string, string, error) {
 		ctx, cancel = context.WithTimeout(context.Background(), timeout)
 		defer cancel()
 		script := "cd " + shQuote(dir) + " && " + remoteScript("git", args...)
-		cmd = exec.CommandContext(ctx, "ssh", host, script)
+		sshArgs := append(remote.MultiplexArgs(host), host, script)
+		cmd = exec.CommandContext(ctx, "ssh", sshArgs...)
 	}
 
 	var out, errOut strings.Builder
@@ -299,7 +302,8 @@ func StageHunkAtLine(host, repoRoot, relPath string, line int) (bool, error) {
 		ctx, cancel = context.WithTimeout(context.Background(), timeout)
 		defer cancel()
 		script := "cd " + shQuote(repoRoot) + " && " + remoteScript("git", "apply", "--cached", "-")
-		cmd = exec.CommandContext(ctx, "ssh", host, script)
+		sshArgs := append(remote.MultiplexArgs(host), host, script)
+		cmd = exec.CommandContext(ctx, "ssh", sshArgs...)
 	}
 	cmd.Stdin = strings.NewReader(patch)
 	var errOut strings.Builder

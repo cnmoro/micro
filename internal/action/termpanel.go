@@ -157,7 +157,8 @@ func (tp *TerminalPanel) NewTab(name string) {
 			name = "ssh:" + Remote.Target
 		}
 		remoteShell := "cd " + remote.Quote(Remote.Path) + " 2>/dev/null; exec \"${SHELL:-/bin/sh}\" -l"
-		tp.NewTabWithCommand(name, []string{"ssh", "-t", Remote.Target, remoteShell})
+		sshArgs := append(append([]string{"ssh"}, remote.MultiplexArgs(Remote.Target)...), "-t", Remote.Target, remoteShell)
+		tp.NewTabWithCommand(name, sshArgs)
 		return
 	}
 	tp.NewTabWithCommand(name, defaultShellArgs())

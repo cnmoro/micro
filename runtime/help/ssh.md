@@ -1,11 +1,18 @@
 # SSH - Remote
 
 Micro can work against a remote machine over SSH, VS Code Remote-SSH style:
-the Explorer browses the remote filesystem, Docker manages the remote
-daemon, and you get a real interactive remote shell in the terminal panel -
-all through your existing SSH setup (config aliases, agent, keys). Micro
-never handles credentials itself; everything shells out to your system's
-`ssh` binary.
+the Explorer browses the remote filesystem, Docker and Git manage the
+remote daemon/repository, and you get a real interactive remote shell in
+the terminal panel - all through your existing SSH setup (config aliases,
+agent, keys). Micro never handles credentials itself; everything shells
+out to your system's `ssh` binary.
+
+The Explorer, Docker, Git and terminal panel each connect independently,
+but they all share a single authenticated connection per host (via ssh's
+own connection multiplexing, `ControlMaster`/`ControlPersist`) - so on a
+password-auth host you're only prompted once per session, not once per
+feature. That shared connection is closed when you quit micro (or after
+10 minutes idle, if it's somehow still open).
 
 ## Connecting: the SSH wizard
 
@@ -27,8 +34,9 @@ editor, so you can keep typing/browsing while it works in the background.
 
 Once resolved, this:
 * Switches the Explorer to browse that remote directory
-* Points the Docker view at the remote Docker daemon (via `docker -H
-  ssh://target`, the Docker CLI's own SSH transport)
+* Points the Docker and Git views at the remote host - both run their
+  commands (`docker ...` / `git ...`) entirely over `ssh target ...`, so
+  only the remote machine needs docker/git installed, not your local one
 * Opens a real interactive remote shell in a new terminal panel tab
 
 You can also connect directly from the command line: `> ssh <target>

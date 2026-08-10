@@ -140,7 +140,8 @@ func connectRemote(target, remotePath string) {
 			// "Connected" right after would just be confusing.
 			tabsBefore := len(TermPanel.tabs)
 			remoteShell := "cd " + remote.Quote(resolved) + " 2>/dev/null; exec \"${SHELL:-/bin/sh}\" -l"
-			TermPanel.NewTabWithCommand("ssh:"+target, []string{"ssh", "-t", target, remoteShell})
+			sshArgs := append(append([]string{"ssh"}, remote.MultiplexArgs(target)...), "-t", target, remoteShell)
+			TermPanel.NewTabWithCommand("ssh:"+target, sshArgs)
 			if len(TermPanel.tabs) > tabsBefore {
 				TermPanel.Show()
 				InfoBar.Message("Connected to " + target + ":" + resolved)

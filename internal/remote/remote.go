@@ -8,14 +8,82 @@ package remote
 import (
 	"bytes"
 	"context"
+	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
 )
 
 const cmdTimeout = 15 * time.Second
+
+// controlDir holds this process's SSH ControlMaster sockets, one per
+// target host - so every ssh invocation micro makes for a given host (the
+// Explorer, Docker, git, and the terminal panel each shell out to ssh
+// independently) reuses a single authenticated connection via OpenSSH's
+// own connection multiplexing, instead of each one prompting for a
+// password separately. Without this, a password-auth host can easily
+// mean typing the same password ten times in a row for what feels like
+// one "connect" action.
+var controlDir string
+
+func init() {
+	if d, err := os.MkdirTemp("", "micro-ssh-*"); err == nil {
+		controlDir = d
+	}
+}
+
+// MultiplexArgs returns the ssh CLI arguments that route an invocation for
+// target through this process's shared, kept-alive connection for that
+// host (established on whichever call happens to run first, torn down by
+// CloseAllMultiplexed on quit). Prepend the result to any ssh argv, before
+// the destination. Returns nil if a control directory couldn't be
+// created, in which case ssh just falls back to its normal one-connection-
+// per-invocation behavior.
+//
+// ControlPath uses ssh's own "%C" token (a hash of the connection's local
+// host/remote host/port/user) rather than something built from target
+// directly - %C is always a short, filesystem-safe, unique-per-connection
+// name, which a raw target string (arbitrary length, `/`, `@`, `:` and
+// all) is not safe to assume.
+func MultiplexArgs(target string) []string {
+	if controlDir == "" {
+		return nil
+	}
+	return []string{
+		"-o", "ControlMaster=auto",
+		// Bounded rather than indefinite ("yes") as a safety net: normal
+		// quit paths call CloseAllMultiplexed explicitly, but if that
+		// somehow doesn't run (a crash, a force-kill), an indefinitely
+		// persistent master would otherwise linger as a background
+		// process forever instead of just until it's been idle a while.
+		"-o", "ControlPersist=10m",
+		"-o", "ControlPath=" + filepath.Join(controlDir, "%C"),
+	}
+}
+
+// CloseAllMultiplexed asks ssh to close every ControlMaster connection
+// this process opened. Best-effort: called once on quit, and if it
+// doesn't fully succeed (e.g. a control socket ssh itself already cleaned
+// up), the background ssh master processes still exit on their own once
+// idle for a while, or when the OS reclaims the temp directory.
+func CloseAllMultiplexed() {
+	if controlDir == "" {
+		return
+	}
+	entries, err := os.ReadDir(controlDir)
+	if err == nil {
+		for _, e := range entries {
+			sockPath := filepath.Join(controlDir, e.Name())
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			exec.CommandContext(ctx, "ssh", "-o", "ControlPath="+sockPath, "-O", "exit", "x").Run()
+			cancel()
+		}
+	}
+	os.RemoveAll(controlDir)
+}
 
 // Entry is a single file or directory returned by ListDir.
 type Entry struct {
@@ -52,7 +120,8 @@ func Dir(p string) string {
 func run(target, script string) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "ssh", target, script)
+	args := append(MultiplexArgs(target), target, script)
+	cmd := exec.CommandContext(ctx, "ssh", args...)
 	var out, errOut bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &errOut
@@ -70,7 +139,8 @@ func run(target, script string) ([]byte, error) {
 func runWithStdin(target, script string, stdin []byte) error {
 	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "ssh", target, script)
+	args := append(MultiplexArgs(target), target, script)
+	cmd := exec.CommandContext(ctx, "ssh", args...)
 	cmd.Stdin = bytes.NewReader(stdin)
 	var errOut bytes.Buffer
 	cmd.Stderr = &errOut

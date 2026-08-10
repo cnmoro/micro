@@ -22,6 +22,7 @@ import (
 	"github.com/micro-editor/micro/v2/internal/buffer"
 	"github.com/micro-editor/micro/v2/internal/clipboard"
 	"github.com/micro-editor/micro/v2/internal/config"
+	"github.com/micro-editor/micro/v2/internal/remote"
 	"github.com/micro-editor/micro/v2/internal/screen"
 	"github.com/micro-editor/micro/v2/internal/shell"
 	"github.com/micro-editor/micro/v2/internal/util"
@@ -321,6 +322,13 @@ func exit(rc int) {
 	if screen.Screen != nil {
 		screen.Screen.Fini()
 	}
+
+	// Every quit path (Ctrl-q, QuitAll, sighup, sigterm, normal return)
+	// unwinds through this one function - the single place to tear down
+	// the SSH ControlMaster connections opened for password caching (see
+	// remote.MultiplexArgs) so they don't linger as background processes
+	// after micro itself has exited.
+	remote.CloseAllMultiplexed()
 
 	os.Exit(rc)
 }
