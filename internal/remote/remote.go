@@ -178,8 +178,21 @@ func Reachable(target string) (string, error) {
 // ResolvePath resolves p on the remote host to an absolute path. If p is
 // empty, it resolves to the remote user's home directory.
 func ResolvePath(target, p string) (string, error) {
-	dest := "\"$HOME\""
-	if p != "" {
+	var dest string
+	switch {
+	case p == "", p == "~":
+		dest = "\"$HOME\""
+	case strings.HasPrefix(p, "~/"):
+		// Quote(p) alone would single-quote the leading "~" along with
+		// the rest of the path, and shells only expand a tilde when
+		// it's unquoted - "~/foo" stops meaning "home" and starts
+		// meaning a literal directory named "~foo" the moment it's
+		// wrapped in quotes, which doesn't exist. Keep "$HOME" bare so
+		// it still expands, and only quote the part after the slash;
+		// "$HOME"/'rest' is one concatenated shell word, same as if it
+		// had been written unquoted throughout.
+		dest = "\"$HOME\"/" + Quote(strings.TrimPrefix(p, "~/"))
+	default:
 		dest = Quote(p)
 	}
 	script := "cd " + dest + " 2>/dev/null && pwd"

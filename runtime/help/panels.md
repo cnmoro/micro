@@ -104,12 +104,18 @@ micro's working directory - at that folder) and **Cancel**.
 ### Changing the working directory
 
 Press `Alt-5`/`Ctrl-Shift-5` (or run `> openfolder`) to switch the Explorer to a
-different local folder - the equivalent of VS Code's "Open Folder". It
-prompts for a path (prefilled with the current directory, Tab-completes
-like any file path) and, once you confirm, changes micro's working
-directory and re-roots the Explorer there. If you were connected to a
-remote host, it disconnects first, since browsing a local folder while
-Docker/terminal are still pointed at a remote host would be confusing.
+different folder - the equivalent of VS Code's "Open Folder". It prompts
+for a path (prefilled with the current directory, Tab-completes like any
+file path) and, once you confirm, re-roots the Explorer there.
+
+While connected to a remote host, this stays on that host instead - it
+prompts for a *remote* path (relative paths resolve against the session's
+current remote directory, `~` against the remote home directory) and
+re-roots the Explorer/Docker/Git views there. `> openfolder <path>` (with
+an explicit path) does the same while connected. Changing directory
+should happen inside the machine you're already working in, not back out
+to the local one - to actually go back to browsing locally, disconnect
+first (`Alt-4`).
 
 ## Docker
 
